@@ -186,7 +186,7 @@ document.getElementById("generateForm").addEventListener("submit", async (event)
   imageElement.style.display = "none";
   downloadGuide.style.display = "none";
 
-  const imageUrl = `https://clairity.us.kg/api/brat?text=${encodeURIComponent(text)}`;
+  const imageUrl = `https://clairity-nine.vercel.app/api/brat?text=${encodeURIComponent(text)}`;
 
   try {
     const response = await fetch(imageUrl);
