@@ -117,46 +117,37 @@
   </footer>
 
   <script>
-    // Ganti 'bratgen-xziyy' dengan nama unik kamu (bebas, asal unik)
-    const NAMESPACE = 'https://brat-clairity.vercel.app/';
-    const API_BASE = 'https://api.countapi.xyz';
+    const API_BASE = 'https://countapi.mileshilliard.com/api/v1';
+    
+    // Key untuk visitor dan request (buat 2 key berbeda)
+    const VISITOR_KEY = 'xziyy1153-visitors';
+    const REQUEST_KEY = 'xziyy1153-requests';
 
-    // Initialize visitor count (auto increment on page load)
-    async function initVisitorCount() {
+    // Get current count
+    async function getCount(key) {
       try {
-        const response = await fetch(`${API_BASE}/hit/${NAMESPACE}/visitors`);
+        const response = await fetch(`${API_BASE}/get/${key}`);
         const data = await response.json();
-        updateCounter('totalUsers', data.value);
+        return data.value || 0;
       } catch (error) {
-        console.error('Error loading visitor count:', error);
-        document.getElementById('totalUsers').textContent = '---';
+        console.error(`Error getting count for ${key}:`, error);
+        return 0;
       }
     }
 
-    // Get current request count
-    async function getRequestCount() {
+    // Hit/increment counter
+    async function hitCount(key) {
       try {
-        const response = await fetch(`${API_BASE}/get/${NAMESPACE}/requests`);
+        const response = await fetch(`${API_BASE}/hit/${key}`);
         const data = await response.json();
-        updateCounter('totalRequests', data.value || 0);
+        return data.value || 0;
       } catch (error) {
-        console.error('Error loading request count:', error);
-        document.getElementById('totalRequests').textContent = '---';
+        console.error(`Error hitting count for ${key}:`, error);
+        return 0;
       }
     }
 
-    // Increment request count
-    async function incrementRequests() {
-      try {
-        const response = await fetch(`${API_BASE}/hit/${NAMESPACE}/requests`);
-        const data = await response.json();
-        updateCounter('totalRequests', data.value);
-      } catch (error) {
-        console.error('Error incrementing requests:', error);
-      }
-    }
-
-    // Update counter with animation
+    // Update counter display with animation
     function updateCounter(elementId, value) {
       const element = document.getElementById(elementId);
       element.textContent = value;
@@ -164,10 +155,38 @@
       setTimeout(() => element.classList.remove('count-animation'), 400);
     }
 
+    // Initialize visitor count
+    async function initVisitorCount() {
+      const hasVisited = sessionStorage.getItem('bratgen_visited');
+      
+      if (!hasVisited) {
+        // New visitor - increment counter
+        const count = await hitCount(VISITOR_KEY);
+        updateCounter('totalUsers', count);
+        sessionStorage.setItem('bratgen_visited', 'true');
+      } else {
+        // Returning visitor - just get count
+        const count = await getCount(VISITOR_KEY);
+        updateCounter('totalUsers', count);
+      }
+    }
+
+    // Initialize request count
+    async function initRequestCount() {
+      const count = await getCount(REQUEST_KEY);
+      updateCounter('totalRequests', count);
+    }
+
+    // Increment request count
+    async function incrementRequests() {
+      const count = await hitCount(REQUEST_KEY);
+      updateCounter('totalRequests', count);
+    }
+
     // Initialize on page load
     window.addEventListener('DOMContentLoaded', () => {
       initVisitorCount();
-      getRequestCount();
+      initRequestCount();
     });
 
     document.getElementById("generateForm").addEventListener("submit", async (event) => {
@@ -198,7 +217,7 @@
         downloadGuide.classList.remove("hidden");
         
         // Increment request count GLOBALLY!
-        incrementRequests();
+        await incrementRequests();
         
         imageElement.onclick = function() {
           const a = document.createElement("a");
