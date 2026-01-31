@@ -1,103 +1,29 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brat Image Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
     body {
       font-family: 'Roboto', sans-serif;
-      line-height: 1.6;
-      background: #121212;
-      color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 1rem;
-      position: relative;
     }
 
-    .container {
-      background: #1e1e1e;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      border-radius: 15px;
-      padding: 1.5rem;
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
-    h1 {
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-      color: #ffffff;
+    @keyframes changeShape {
+      0% { border-radius: 50%; }
+      50% { border-radius: 0%; }
+      100% { border-radius: 50%; }
     }
 
-    input {
-      width: 100%;
-      padding: 0.8rem;
-      margin-bottom: 1rem;
-      border: none;
-      border-radius: 10px;
-      background: #292929;
-      color: #ffffff;
-      outline: none;
-      font-size: 1rem;
-    }
-
-    .btn {
-      display: inline-block;
-      width: 100%;
-      padding: 0.8rem;
-      margin: 0.5rem 0;
-      border: none;
-      border-radius: 10px;
-      background: linear-gradient(145deg, #6a5acd, #836fff);
-      color: white;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .btn:hover {
-      background: linear-gradient(145deg, #5a4cbd, #725edf);
-    }
-
-    .ad-section {
-      margin-top: 1.5rem;
-      text-align: center;
-    }
-
-    .ad-section p {
-      font-size: 0.9rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .ad-section a {
-      text-decoration: none;
-      color: #6a5acd;
-      font-weight: 500;
-    }
-
-    footer {
-      margin-top: 2rem;
-      font-size: 0.8rem;
-      color: #999;
-    }
-
-    /* Animasi Loading */
     .loading {
-      margin-top: 1rem;
       width: 40px;
       height: 40px;
       border: 5px solid #fff;
@@ -105,116 +31,109 @@
       border-radius: 50%;
       animation: spin 1s linear infinite, changeShape 1s ease-in-out infinite;
     }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    @keyframes changeShape {
-      0% {
-        border-radius: 50%;
-      }
-      50% {
-        border-radius: 0%;
-      }
-      100% {
-        border-radius: 50%;
-      }
-    }
-
-    /* Latar belakang gelap saat loading */
-    .loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7); /* Gelap dengan transparansi */
-      display: none;
-      justify-content: center;
-      align-items: center;
-    }
-
-    @media (min-width: 768px) {
-      .container {
-        max-width: 500px;
-      }
-    }
   </style>
 </head>
-<body>
-  <!-- Overlay Loading -->
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="loading" id="loadingAnimation"></div>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+  
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+    <div class="loading"></div>
   </div>
 
-  <div class="container">
-    <h1>Brat Image Generator</h1>
-    <form id="generateForm">
-      <input id="textInput" type="text" placeholder="enter text here">
-      <button type="submit" class="btn">Generate</button>
-<button type="button" class="btn" onclick="window.location.href='https://whatsapp.com/channel/0029VaPNMxNK0IBsKDGFD90K'">Try on WhatsApp</button>  
+  <!-- Main Container -->
+  <div class="bg-gray-800 shadow-xl rounded-2xl p-6 w-full max-w-md text-center">
+    <h1 class="text-2xl font-bold mb-4">Brat Image Generator</h1>
+    
+    <form id="generateForm" class="space-y-4">
+      <input 
+        id="textInput" 
+        type="text" 
+        placeholder="enter text here"
+        class="w-full px-4 py-3 rounded-xl bg-gray-700 text-white outline-none focus:ring-2 focus:ring-purple-500"
+      >
+      
+      <button 
+        type="submit" 
+        class="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium transition-all duration-300"
+      >
+        Generate
+      </button>
+      
+      <button 
+        type="button" 
+        onclick="window.location.href='https://whatsapp.com/channel/0029VaPNMxNK0IBsKDGFD90K'"
+        class="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium transition-all duration-300"
+      >
+        Try on WhatsApp
+      </button>
     </form>
 
-    <img id="generatedImage" style="display: none; margin-top: 1rem; max-width: 100%; border-radius: 10px;" alt="Generated Image">
-    <p id="downloadGuide" style="display: none; color: #ddd; font-size: 0.9rem;">id: klik pada gambar untuk mendownloadnya!<br>en: click on the image to download it!</p>
+    <img 
+      id="generatedImage" 
+      class="hidden mt-4 w-full rounded-xl cursor-pointer"
+      alt="Generated Image"
+    >
+    
+    <p id="downloadGuide" class="hidden mt-2 text-gray-300 text-sm">
+      id: klik pada gambar untuk mendownloadnya!<br>
+      en: click on the image to download it!
+    </p>
 
-    <div class="ad-section">
-      <p>Explore other projects:</p>
-      <a href="#">Coming soon</a>
+    <div class="mt-6 text-center">
+      <p class="text-sm mb-2">Explore other projects:</p>
+      <a href="#" class="text-purple-500 font-medium hover:text-purple-400">Coming soon</a>
     </div>
   </div>
-  <footer>© 2025 Clairity. created by xZiyy.</footer>
 
-<script>
-document.getElementById("generateForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
+  <footer class="mt-8 text-xs text-gray-500">
+    © 2025 Clairity. created by xZiyy.
+  </footer>
 
-  const text = document.getElementById("textInput").value.trim();
-  const loadingOverlay = document.getElementById("loadingOverlay");
-  const imageElement = document.getElementById("generatedImage");
-  const downloadGuide = document.getElementById("downloadGuide");
+  <script>
+    document.getElementById("generateForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
 
-  if (!text) return alert("Please enter some text!");
+      const text = document.getElementById("textInput").value.trim();
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      const imageElement = document.getElementById("generatedImage");
+      const downloadGuide = document.getElementById("downloadGuide");
 
-  loadingOverlay.style.display = "flex";
-  imageElement.style.display = "none";
-  downloadGuide.style.display = "none";
+      if (!text) return alert("Please enter some text!");
 
-  const imageUrl = `https://clairity-api.vercel.app/api/brat?text=${encodeURIComponent(text)}`;
+      loadingOverlay.classList.remove("hidden");
+      imageElement.classList.add("hidden");
+      downloadGuide.classList.add("hidden");
 
-  try {
-    const response = await fetch(imageUrl);
-    if (!response.ok) throw new Error("Failed to generate image");
+      // API yang benar
+      const imageUrl = `https://clairity-api.vercel.app/api/brat?text=${encodeURIComponent(text)}`;
 
-    const blob = await response.blob();
-    const objectURL = URL.createObjectURL(blob);
+      try {
+        const response = await fetch(imageUrl);
+        if (!response.ok) throw new Error("Failed to generate image");
 
-    imageElement.src = objectURL;
-    imageElement.style.display = "block";
-    downloadGuide.style.display = "block";
-    
-    imageElement.onclick = function() {
-      const a = document.createElement("a");
-      a.href = objectURL;
-      a.download = "generated_image.png";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    };
-  } catch (error) {
-    console.error(error);
-    alert("An error occurred while generating the image.");
-  } finally {
-    loadingOverlay.style.display = "none";
-  }
-});
-</script>
+        const blob = await response.blob();
+        const objectURL = URL.createObjectURL(blob);
+
+        imageElement.src = objectURL;
+        imageElement.classList.remove("hidden");
+        downloadGuide.classList.remove("hidden");
+        
+        imageElement.onclick = function() {
+          const a = document.createElement("a");
+          a.href = objectURL;
+          a.download = "brat_image.png";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        };
+      } catch (error) {
+        console.error(error);
+        alert("An error occurred while generating the image.");
+      } finally {
+        loadingOverlay.classList.add("hidden");
+      }
+    });
+  </script>
 
 </body>
 </html>
