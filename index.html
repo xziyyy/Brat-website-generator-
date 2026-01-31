@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,10 +7,6 @@
   <title>Brat Image Generator</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-  
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   
   <style>
     body {
@@ -38,12 +35,12 @@
 
     @keyframes countUp {
       0% { transform: scale(1); }
-      50% { transform: scale(1.2); color: #a78bfa; }
+      50% { transform: scale(1.15); }
       100% { transform: scale(1); }
     }
 
     .count-animation {
-      animation: countUp 0.5s ease;
+      animation: countUp 0.4s ease;
     }
   </style>
 </head>
@@ -63,13 +60,13 @@
       <div class="bg-gradient-to-br from-purple-900 to-purple-800 rounded-lg p-4 shadow-lg">
         <p class="text-purple-200 text-xs mb-1">👥 Total Visitors</p>
         <p id="totalUsers" class="text-3xl font-bold text-white transition-all">
-          <span class="text-sm">...</span>
+          <span class="animate-pulse">...</span>
         </p>
       </div>
       <div class="bg-gradient-to-br from-indigo-900 to-indigo-800 rounded-lg p-4 shadow-lg">
         <p class="text-indigo-200 text-xs mb-1">🎨 Images Created</p>
         <p id="totalRequests" class="text-3xl font-bold text-white transition-all">
-          <span class="text-sm">...</span>
+          <span class="animate-pulse">...</span>
         </p>
       </div>
     </div>
@@ -120,66 +117,58 @@
   </footer>
 
   <script>
-    // Firebase Configuration (GANTI DENGAN CONFIG KAMU!)
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
+    // Ganti 'bratgen-xziyy' dengan nama unik kamu (bebas, asal unik)
+    const NAMESPACE = 'bratgen-xziyy';
+    const API_BASE = 'https://api.countapi.xyz';
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-
-    // Track unique visitors
-    function trackVisitor() {
-      const visitorId = localStorage.getItem('visitorId') || generateVisitorId();
-      localStorage.setItem('visitorId', visitorId);
-
-      const visitorRef = database.ref('visitors/' + visitorId);
-      visitorRef.set({
-        lastVisit: firebase.database.ServerValue.TIMESTAMP
-      });
-
-      // Update total visitors count
-      database.ref('visitors').once('value', (snapshot) => {
-        const count = snapshot.numChildren();
-        document.getElementById('totalUsers').textContent = count;
-      });
+    // Initialize visitor count (auto increment on page load)
+    async function initVisitorCount() {
+      try {
+        const response = await fetch(`${API_BASE}/hit/${NAMESPACE}/visitors`);
+        const data = await response.json();
+        updateCounter('totalUsers', data.value);
+      } catch (error) {
+        console.error('Error loading visitor count:', error);
+        document.getElementById('totalUsers').textContent = '---';
+      }
     }
 
-    function generateVisitorId() {
-      return 'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    // Get current request count
+    async function getRequestCount() {
+      try {
+        const response = await fetch(`${API_BASE}/get/${NAMESPACE}/requests`);
+        const data = await response.json();
+        updateCounter('totalRequests', data.value || 0);
+      } catch (error) {
+        console.error('Error loading request count:', error);
+        document.getElementById('totalRequests').textContent = '---';
+      }
     }
-
-    // Listen to stats changes in real-time
-    database.ref('stats/totalRequests').on('value', (snapshot) => {
-      const count = snapshot.val() || 0;
-      const element = document.getElementById('totalRequests');
-      element.textContent = count;
-      element.classList.add('count-animation');
-      setTimeout(() => element.classList.remove('count-animation'), 500);
-    });
-
-    database.ref('visitors').on('value', (snapshot) => {
-      const count = snapshot.numChildren();
-      document.getElementById('totalUsers').textContent = count;
-    });
 
     // Increment request count
-    function incrementRequests() {
-      const requestsRef = database.ref('stats/totalRequests');
-      requestsRef.transaction((currentValue) => {
-        return (currentValue || 0) + 1;
-      });
+    async function incrementRequests() {
+      try {
+        const response = await fetch(`${API_BASE}/hit/${NAMESPACE}/requests`);
+        const data = await response.json();
+        updateCounter('totalRequests', data.value);
+      } catch (error) {
+        console.error('Error incrementing requests:', error);
+      }
+    }
+
+    // Update counter with animation
+    function updateCounter(elementId, value) {
+      const element = document.getElementById(elementId);
+      element.textContent = value;
+      element.classList.add('count-animation');
+      setTimeout(() => element.classList.remove('count-animation'), 400);
     }
 
     // Initialize on page load
-    trackVisitor();
+    window.addEventListener('DOMContentLoaded', () => {
+      initVisitorCount();
+      getRequestCount();
+    });
 
     document.getElementById("generateForm").addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -208,7 +197,7 @@
         imageElement.classList.remove("hidden");
         downloadGuide.classList.remove("hidden");
         
-        // Increment request count (GLOBAL!)
+        // Increment request count GLOBALLY!
         incrementRequests();
         
         imageElement.onclick = function() {
