@@ -1,751 +1,1053 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brat Image Generator</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
-
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-
-  <style>
-    :root {
-      --true-black: #000000;
-      --amoled-deep: #050505;
-      --amoled-panel: #0a0a0a;
-      --amoled-surface: #0f0f0f;
-      --amoled-raised: #141414;
-      --amoled-border: #1c1c1c;
-      --amoled-border-bright: #2a2a2a;
-      --amoled-muted: #333333;
-      --amoled-text-dim: #555555;
-      --amoled-text-mid: #888888;
-      --amoled-text: #aaaaaa;
-      --amoled-text-bright: #cccccc;
-      --amoled-white: #e8e8e8;
-      --corner-accent: #ffffff;
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      background: var(--true-black);
-      color: var(--amoled-text);
-      font-family: 'Rajdhani', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      position: relative;
-      overflow-x: hidden;
-    }
-
-    /* === GRID BACKGROUND === */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
-      background-size: 48px 48px;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* === SCANLINE OVERLAY === */
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent 0,
-        transparent 2px,
-        rgba(0,0,0,0.08) 2px,
-        rgba(0,0,0,0.08) 4px
-      );
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* === LOADING OVERLAY === */
-    #loadingOverlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.92);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    #loadingOverlay.hidden { display: none; }
-
-    .loading-ring {
-      width: 44px;
-      height: 44px;
-      position: relative;
-    }
-
-    .loading-ring::before,
-    .loading-ring::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-    }
-
-    .loading-ring::before {
-      border: 2px solid var(--amoled-border);
-    }
-
-    .loading-ring::after {
-      border: 2px solid transparent;
-      border-top-color: var(--amoled-white);
-      animation: spin 0.9s linear infinite;
-    }
-
-    .loading-text {
-      font-family: 'Orbitron', monospace;
-      font-size: 0.55rem;
-      letter-spacing: 4px;
-      color: var(--amoled-text-dim);
-      text-transform: uppercase;
-      animation: blink 1.2s step-end infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.2; }
-    }
-
-    /* === MAIN WRAPPER === */
-    .wrapper {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 460px;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-
-    /* === HEADER === */
-    .site-header {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-
-    .site-header .eyebrow {
-      font-family: 'Orbitron', monospace;
-      font-size: 0.5rem;
-      letter-spacing: 5px;
-      color: var(--amoled-text-dim);
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-
-    .site-header h1 {
-      font-family: 'Orbitron', monospace;
-      font-size: 1.5rem;
-      font-weight: 900;
-      letter-spacing: 3px;
-      color: var(--amoled-white);
-      text-transform: uppercase;
-      line-height: 1;
-    }
-
-    .site-header h1 span {
-      color: var(--amoled-text-dim);
-      font-weight: 400;
-    }
-
-    .header-line {
-      width: 48px;
-      height: 1px;
-      background: var(--amoled-border-bright);
-      margin: 14px auto 0;
-    }
-
-    /* === PANEL === */
-    .panel {
-      background: var(--amoled-panel);
-      border: 1px solid var(--amoled-border);
-      position: relative;
-      padding: 28px;
-    }
-
-    /* Corner accents */
-    .panel::before,
-    .panel::after {
-      content: '';
-      position: absolute;
-      width: 12px;
-      height: 12px;
-    }
-
-    .panel::before {
-      top: -1px; left: -1px;
-      border-top: 2px solid var(--amoled-text-dim);
-      border-left: 2px solid var(--amoled-text-dim);
-    }
-
-    .panel::after {
-      bottom: -1px; right: -1px;
-      border-bottom: 2px solid var(--amoled-text-dim);
-      border-right: 2px solid var(--amoled-text-dim);
-    }
-
-    .panel-inner-corners::before,
-    .panel-inner-corners::after {
-      content: '';
-      position: absolute;
-      width: 12px;
-      height: 12px;
-    }
-
-    .panel-inner-corners::before {
-      top: -1px; right: -1px;
-      border-top: 2px solid var(--amoled-border-bright);
-      border-right: 2px solid var(--amoled-border-bright);
-    }
-
-    .panel-inner-corners::after {
-      bottom: -1px; left: -1px;
-      border-bottom: 2px solid var(--amoled-border-bright);
-      border-left: 2px solid var(--amoled-border-bright);
-    }
-
-    /* === STATS === */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 28px;
-    }
-
-    .stat-box {
-      background: var(--amoled-surface);
-      border: 1px solid var(--amoled-border);
-      padding: 16px;
-      position: relative;
-    }
-
-    .stat-box::after {
-      content: '';
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 1px;
-      background: linear-gradient(90deg, var(--amoled-border-bright), transparent);
-    }
-
-    .stat-label {
-      font-family: 'Orbitron', monospace;
-      font-size: 0.45rem;
-      letter-spacing: 3px;
-      color: var(--amoled-text-dim);
-      text-transform: uppercase;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .stat-icon {
-      width: 6px;
-      height: 6px;
-      background: var(--amoled-muted);
-      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-      flex-shrink: 0;
-    }
-
-    .stat-value {
-      font-family: 'Orbitron', monospace;
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: var(--amoled-white);
-      line-height: 1;
-      transition: all 0.3s;
-    }
-
-    .stat-value.loading-val {
-      font-size: 0.7rem;
-      color: var(--amoled-text-dim);
-      letter-spacing: 2px;
-    }
-
-    /* === FORM ELEMENTS === */
-    .input-wrapper {
-      position: relative;
-      margin-bottom: 12px;
-    }
-
-    .input-label {
-      font-family: 'Orbitron', monospace;
-      font-size: 0.45rem;
-      letter-spacing: 3px;
-      color: var(--amoled-text-dim);
-      text-transform: uppercase;
-      margin-bottom: 8px;
-      display: block;
-    }
-
-    .text-input {
-      width: 100%;
-      background: var(--amoled-surface);
-      border: 1px solid var(--amoled-border);
-      color: var(--amoled-white);
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 1rem;
-      font-weight: 500;
-      letter-spacing: 1px;
-      padding: 14px 16px;
-      outline: none;
-      transition: border-color 0.2s;
-      -webkit-appearance: none;
-      border-radius: 0;
-    }
-
-    .text-input::placeholder {
-      color: var(--amoled-muted);
-      font-style: italic;
-      letter-spacing: 1px;
-    }
-
-    .text-input:focus {
-      border-color: var(--amoled-text-mid);
-      background: var(--amoled-raised);
-    }
-
-    /* === BUTTONS === */
-    .btn {
-      width: 100%;
-      font-family: 'Orbitron', monospace;
-      font-size: 0.6rem;
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      padding: 16px;
-      cursor: pointer;
-      transition: all 0.2s;
-      position: relative;
-      overflow: hidden;
-      border: none;
-      outline: none;
-    }
-
-    .btn::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: rgba(255,255,255,0);
-      transition: background 0.2s;
-    }
-
-    .btn:hover::before {
-      background: rgba(255,255,255,0.04);
-    }
-
-    .btn-primary {
-      background: var(--amoled-raised);
-      border: 1px solid var(--amoled-border-bright);
-      color: var(--amoled-white);
-    }
-
-    .btn-primary:hover {
-      border-color: var(--amoled-text-mid);
-      background: var(--amoled-surface);
-    }
-
-    .btn-primary:active {
-      background: var(--amoled-muted);
-    }
-
-    .btn-secondary {
-      background: transparent;
-      border: 1px solid var(--amoled-border);
-      color: var(--amoled-text-mid);
-    }
-
-    .btn-secondary:hover {
-      border-color: var(--amoled-border-bright);
-      color: var(--amoled-text);
-    }
-
-    .btn-secondary:active {
-      background: var(--amoled-surface);
-    }
-
-    /* Corner detail on primary btn */
-    .btn-primary::after {
-      content: '';
-      position: absolute;
-      top: 0; right: 0;
-      width: 8px; height: 8px;
-      border-top: 1px solid var(--amoled-text-mid);
-      border-right: 1px solid var(--amoled-text-mid);
-    }
-
-    .form-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 4px;
-    }
-
-    /* === DIVIDER === */
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 20px 0;
-    }
-
-    .divider-line {
-      flex: 1;
-      height: 1px;
-      background: var(--amoled-border);
-    }
-
-    .divider-text {
-      font-family: 'Orbitron', monospace;
-      font-size: 0.45rem;
-      letter-spacing: 3px;
-      color: var(--amoled-text-dim);
-      text-transform: uppercase;
-    }
-
-    /* === IMAGE OUTPUT === */
-    .image-container {
-      margin-top: 20px;
-      position: relative;
-      display: none;
-    }
-
-    .image-container.visible { display: block; }
-
-    .image-container::before {
-      content: 'OUTPUT';
-      position: absolute;
-      top: 8px; right: 10px;
-      font-family: 'Orbitron', monospace;
-      font-size: 0.4rem;
-      letter-spacing: 3px;
-      color: var(--amoled-text-dim);
-      opacity: 0.5;
-      z-index: 1;
-    }
-
-    #generatedImage {
-      width: 100%;
-      display: block;
-      cursor: pointer;
-      border: 1px solid var(--amoled-border);
-      transition: border-color 0.2s;
-      filter: brightness(0.97);
-    }
-
-    #generatedImage:hover {
-      border-color: var(--amoled-border-bright);
-    }
-
-    .download-hint {
-      display: none;
-      margin-top: 8px;
-      font-family: 'Orbitron', monospace;
-      font-size: 0.45rem;
-      letter-spacing: 2px;
-      color: var(--amoled-text-dim);
-      text-transform: uppercase;
-      text-align: center;
-      padding: 8px;
-      border: 1px solid var(--amoled-border);
-      border-top: none;
-      background: var(--amoled-surface);
-    }
-
-    .download-hint.visible { display: block; }
-
-    .download-hint span { color: var(--amoled-text-mid); }
-
-    /* === FOOTER SECTION === */
-    .panel-footer {
-      border-top: 1px solid var(--amoled-border);
-      padding-top: 20px;
-      margin-top: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .footer-label {
-      font-family: 'Orbitron', monospace;
-      font-size: 0.45rem;
-      letter-spacing: 2px;
-      color: var(--amoled-text-dim);
-      text-transform: uppercase;
-    }
-
-    .coming-soon-link {
-      font-family: 'Orbitron', monospace;
-      font-size: 0.5rem;
-      letter-spacing: 2px;
-      color: var(--amoled-text-mid);
-      text-decoration: none;
-      text-transform: uppercase;
-      border-bottom: 1px solid var(--amoled-border);
-      padding-bottom: 2px;
-      transition: color 0.2s, border-color 0.2s;
-    }
-
-    .coming-soon-link:hover {
-      color: var(--amoled-text);
-      border-color: var(--amoled-text-mid);
-    }
-
-    /* === SITE FOOTER === */
-    .site-footer {
-      margin-top: 24px;
-      font-family: 'Orbitron', monospace;
-      font-size: 0.4rem;
-      letter-spacing: 3px;
-      color: var(--amoled-text-dim);
-      text-transform: uppercase;
-      text-align: center;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* === COUNT ANIMATION === */
-    @keyframes countUp {
-      0%   { transform: translateY(6px); opacity: 0; }
-      100% { transform: translateY(0); opacity: 1; }
-    }
-
-    .count-animation {
-      animation: countUp 0.35s cubic-bezier(0.23,1,0.32,1);
-    }
-
-    /* === SCROLLBAR === */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: var(--true-black); }
-    ::-webkit-scrollbar-thumb { background: var(--amoled-border-bright); }
-
-    /* === ENTRANCE ANIMATIONS === */
-    .wrapper {
-      animation: fadeIn 0.6s ease forwards;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .panel .stats-grid .stat-box:nth-child(1) {
-      animation: fadeIn 0.5s 0.1s ease both;
-    }
-
-    .panel .stats-grid .stat-box:nth-child(2) {
-      animation: fadeIn 0.5s 0.2s ease both;
-    }
-  </style>
+<!--
+================================================================
+  INDEX.HTML — Clairity Tools by xZiyy
+  ----------------------------------------------------------------
+  SECTION MAP:
+  [1] HEAD        — Meta, Google Fonts, CSS
+  [2] CSS         — Design tokens, reset, components, pages
+  [3] LOADING     — Full-screen loading overlay
+  [4] NAVBAR      — Fixed top nav + mobile drawer
+  [5] PAGE: HOME  — About + stats
+  [6] PAGE: CREDITS
+  [7] PAGE: BRAT  — Brat Image Generator
+  [8] PAGE: TIKTOK — TikTok Downloader
+  [9] FOOTER
+  [10] SCRIPT     — JS: tabs / CountAPI / BratGen / TikTokDL
+================================================================
+-->
+
+<!-- ═══════════════════════════════════════════
+     [1] HEAD — META & FONTS
+═══════════════════════════════════════════ -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clairity — Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- ═══════════════════════════════════════════
+     [2] CSS
+═══════════════════════════════════════════ -->
+<style>
+
+/* ── DESIGN TOKENS ── */
+:root {
+  --c-bg:       #000000;
+  --c-deep:     #040404;
+  --c-panel:    #090909;
+  --c-surface:  #0e0e0e;
+  --c-raised:   #131313;
+  --c-border:   #1a1a1a;
+  --c-bhi:      #2a2a2a;
+  --c-muted:    #303030;
+  --c-dim:      #555555;
+  --c-mid:      #777777;
+  --c-text:     #999999;
+  --c-bright:   #bbbbbb;
+  --c-white:    #e0e0e0;
+  --nav-h:      52px;
+  --f-display:  'Orbitron', monospace;
+  --f-body:     'Rajdhani', sans-serif;
+}
+
+/* ── RESET ── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--c-bg);
+  color:var(--c-text);
+  font-family:var(--f-body);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+a{text-decoration:none;color:inherit}
+button{cursor:pointer;border:none;outline:none;background:none;font-family:inherit}
+input{font-family:inherit}
+
+/* Grid background */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,0.015) 1px,transparent 1px);
+  background-size:44px 44px;
+  pointer-events:none;z-index:0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:var(--c-bg)}
+::-webkit-scrollbar-thumb{background:var(--c-bhi)}
+
+/* Keyframes */
+@keyframes spin    {to{transform:rotate(360deg)}}
+@keyframes blink   {0%,100%{opacity:1}50%{opacity:.15}}
+@keyframes fadeUp  {from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes countIn {from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+
+/* ══════════════════════════════════════════════
+   LOADING OVERLAY
+══════════════════════════════════════════════ */
+#loading{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.93);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;
+  z-index:9999;
+  transition:opacity .25s;
+}
+#loading.hidden{opacity:0;pointer-events:none}
+
+.ring{
+  width:40px;height:40px;position:relative;
+}
+.ring::before{
+  content:'';position:absolute;inset:0;
+  border-radius:50%;border:1px solid var(--c-border);
+}
+.ring::after{
+  content:'';position:absolute;inset:0;
+  border-radius:50%;
+  border:2px solid transparent;
+  border-top-color:var(--c-white);
+  animation:spin .8s linear infinite;
+}
+.ring-label{
+  font-family:var(--f-display);
+  font-size:.42rem;letter-spacing:5px;
+  color:var(--c-dim);text-transform:uppercase;
+  animation:blink 1.2s step-end infinite;
+}
+
+
+/* ══════════════════════════════════════════════
+   NAVBAR
+══════════════════════════════════════════════ */
+#navbar{
+  position:fixed;top:0;left:0;right:0;
+  height:var(--nav-h);
+  background:var(--c-panel);
+  border-bottom:1px solid var(--c-border);
+  display:flex;align-items:center;
+  padding:0 18px;gap:16px;
+  z-index:200;
+}
+
+.nav-brand{
+  font-family:var(--f-display);
+  font-size:.72rem;font-weight:900;
+  letter-spacing:4px;color:var(--c-white);
+  text-transform:uppercase;margin-right:auto;
+  white-space:nowrap;flex-shrink:0;
+}
+.nav-brand em{color:var(--c-dim);font-style:normal;font-weight:400}
+
+.nav-tabs{
+  display:flex;list-style:none;gap:2px;
+}
+.n-tab{
+  font-family:var(--f-display);
+  font-size:.44rem;letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--c-dim);
+  padding:7px 13px;
+  border:1px solid transparent;
+  transition:all .2s;
+  white-space:nowrap;
+  position:relative;
+}
+.n-tab:hover{color:var(--c-mid);background:var(--c-surface);border-color:var(--c-border)}
+.n-tab.active{
+  color:var(--c-white);
+  background:var(--c-surface);
+  border-color:var(--c-bhi);
+}
+.n-tab.active::after{
+  content:'';position:absolute;
+  bottom:-1px;left:0;right:0;
+  height:1px;background:var(--c-white);
+}
+
+/* hamburger */
+.n-burger{
+  display:none;
+  flex-direction:column;gap:5px;
+  padding:6px;margin-left:auto;
+}
+.n-burger span{
+  display:block;width:18px;height:1px;
+  background:var(--c-mid);transition:.2s;
+}
+
+/* mobile drawer */
+#nav-drawer{
+  display:none;
+  position:fixed;
+  top:var(--nav-h);left:0;right:0;
+  background:var(--c-panel);
+  border-bottom:1px solid var(--c-border);
+  flex-direction:column;
+  z-index:199;
+}
+#nav-drawer.open{display:flex}
+#nav-drawer .n-tab{
+  padding:13px 20px;
+  border:none;border-radius:0;
+}
+#nav-drawer .n-tab.active{
+  border-left:2px solid var(--c-white);
+  background:var(--c-surface);
+}
+#nav-drawer .n-tab.active::after{display:none}
+
+@media(max-width:600px){
+  .nav-tabs{display:none}
+  .n-burger{display:flex}
+}
+
+
+/* ══════════════════════════════════════════════
+   PAGE LAYOUT
+══════════════════════════════════════════════ */
+.page-wrap{
+  position:relative;z-index:1;
+  padding-top:calc(var(--nav-h) + 38px);
+  padding-bottom:64px;
+  min-height:100vh;
+}
+
+.tab-page{
+  display:none;
+  max-width:500px;
+  margin:0 auto;
+  padding:0 18px;
+  animation:fadeUp .38s ease both;
+}
+.tab-page.active{display:block}
+
+
+/* ══════════════════════════════════════════════
+   SHARED COMPONENTS
+══════════════════════════════════════════════ */
+
+/* Page header */
+.pg-eyebrow{
+  font-family:var(--f-display);
+  font-size:.4rem;letter-spacing:5px;
+  color:var(--c-dim);text-transform:uppercase;
+  margin-bottom:7px;
+}
+.pg-title{
+  font-family:var(--f-display);
+  font-size:1.35rem;font-weight:900;
+  letter-spacing:2px;color:var(--c-white);
+  text-transform:uppercase;line-height:1;
+  margin-bottom:5px;
+}
+.pg-title span{color:var(--c-dim);font-weight:400}
+.pg-rule{width:38px;height:1px;background:var(--c-bhi);margin-bottom:26px}
+
+/* Card */
+.card{
+  background:var(--c-panel);
+  border:1px solid var(--c-border);
+  padding:22px;
+  position:relative;
+  margin-bottom:14px;
+}
+.card::before{
+  content:'';position:absolute;
+  top:-1px;left:-1px;
+  width:11px;height:11px;
+  border-top:2px solid var(--c-mid);
+  border-left:2px solid var(--c-mid);
+}
+.card::after{
+  content:'';position:absolute;
+  bottom:-1px;right:-1px;
+  width:11px;height:11px;
+  border-bottom:2px solid var(--c-bhi);
+  border-right:2px solid var(--c-bhi);
+}
+
+/* Card label */
+.c-label{
+  font-family:var(--f-display);
+  font-size:.42rem;letter-spacing:3px;
+  color:var(--c-dim);text-transform:uppercase;
+  margin-bottom:15px;
+  display:flex;align-items:center;gap:7px;
+}
+.c-label::before{
+  content:'';display:inline-block;
+  width:5px;height:5px;
+  background:var(--c-muted);
+  clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+}
+
+/* Horizontal rule */
+.hr{border:none;border-top:1px solid var(--c-border);margin:18px 0}
+
+/* Form label */
+.f-label{
+  font-family:var(--f-display);
+  font-size:.42rem;letter-spacing:3px;
+  color:var(--c-dim);text-transform:uppercase;
+  margin-bottom:7px;display:block;
+}
+
+/* Input */
+.f-input{
+  width:100%;
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  color:var(--c-white);
+  font-family:var(--f-body);
+  font-size:.95rem;font-weight:500;
+  letter-spacing:.4px;
+  padding:13px 15px;
+  outline:none;
+  transition:border-color .2s,background .2s;
+  border-radius:0;-webkit-appearance:none;
+}
+.f-input::placeholder{color:var(--c-muted);font-style:italic}
+.f-input:focus{border-color:var(--c-mid);background:var(--c-raised)}
+
+/* Buttons */
+.btn{
+  display:block;width:100%;
+  font-family:var(--f-display);
+  font-size:.5rem;letter-spacing:3px;
+  text-transform:uppercase;
+  padding:14px 18px;
+  transition:all .2s;
+  position:relative;
+  border-radius:0;
+  text-align:center;
+}
+.btn-p{
+  background:var(--c-raised);
+  border:1px solid var(--c-bhi);
+  color:var(--c-white);
+}
+.btn-p:hover{background:var(--c-surface);border-color:var(--c-mid)}
+.btn-p::after{
+  content:'';position:absolute;
+  top:0;right:0;
+  width:8px;height:8px;
+  border-top:1px solid var(--c-mid);
+  border-right:1px solid var(--c-mid);
+}
+.btn-s{
+  background:transparent;
+  border:1px solid var(--c-border);
+  color:var(--c-mid);
+}
+.btn-s:hover{border-color:var(--c-bhi);color:var(--c-text);background:var(--c-surface)}
+.btn-dl{
+  background:var(--c-surface);
+  border:1px solid var(--c-bhi);
+  color:var(--c-bright);
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  width:100%;
+}
+.btn-dl:hover{border-color:var(--c-white);color:var(--c-white);background:var(--c-raised)}
+
+.btn-group{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* Stats grid */
+.stats-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:10px;margin-bottom:22px;
+}
+.stat-box{
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  padding:14px;position:relative;
+}
+.stat-box::after{
+  content:'';position:absolute;
+  top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,var(--c-bhi),transparent);
+}
+.stat-tag{
+  font-family:var(--f-display);
+  font-size:.4rem;letter-spacing:2px;
+  color:var(--c-dim);text-transform:uppercase;
+  margin-bottom:8px;
+  display:flex;align-items:center;gap:5px;
+}
+.stat-tag::before{
+  content:'';width:5px;height:5px;
+  background:var(--c-muted);
+  clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+  flex-shrink:0;
+}
+.stat-num{
+  font-family:var(--f-display);
+  font-size:1.55rem;font-weight:700;
+  color:var(--c-white);line-height:1;
+}
+.stat-num.init{
+  font-size:.6rem;letter-spacing:3px;
+  color:var(--c-dim);
+}
+.count-anim{animation:countIn .3s ease}
+
+/* Card footer */
+.c-foot{
+  border-top:1px solid var(--c-border);
+  padding-top:16px;margin-top:16px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.c-foot-lbl{
+  font-family:var(--f-display);
+  font-size:.4rem;letter-spacing:2px;
+  color:var(--c-dim);text-transform:uppercase;
+}
+.subtle-a{
+  font-family:var(--f-display);
+  font-size:.44rem;letter-spacing:2px;
+  color:var(--c-mid);text-transform:uppercase;
+  border-bottom:1px solid var(--c-border);
+  padding-bottom:2px;
+  transition:color .2s,border-color .2s;
+}
+.subtle-a:hover{color:var(--c-text);border-color:var(--c-mid)}
+
+
+/* ══════════════════════════════════════════════
+   PAGE: HOME / ABOUT
+══════════════════════════════════════════════ */
+.about-p{
+  font-size:.92rem;line-height:1.8;
+  color:var(--c-mid);margin-bottom:12px;
+}
+.about-p strong{color:var(--c-bright);font-weight:600}
+
+.tool-list{list-style:none;display:flex;flex-direction:column;gap:7px}
+.tool-list li{
+  display:flex;align-items:center;gap:10px;
+  font-family:var(--f-display);
+  font-size:.5rem;letter-spacing:2px;
+  color:var(--c-mid);text-transform:uppercase;
+  padding:10px 13px;
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  transition:border-color .2s;
+}
+.tool-list li:hover{border-color:var(--c-bhi)}
+.tool-list li::before{
+  content:'';width:5px;height:5px;
+  background:var(--c-dim);
+  clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+  flex-shrink:0;
+}
+.tool-badge{
+  margin-left:auto;
+  font-size:.35rem;letter-spacing:2px;
+  color:var(--c-dim);
+  border:1px solid var(--c-border);
+  padding:2px 6px;
+}
+.tool-badge.live{color:var(--c-mid);border-color:var(--c-bhi)}
+
+
+/* ══════════════════════════════════════════════
+   PAGE: CREDITS
+══════════════════════════════════════════════ */
+.credit-item{
+  display:flex;align-items:flex-start;gap:13px;
+  padding:15px 0;
+  border-bottom:1px solid var(--c-border);
+}
+.credit-item:last-child{border-bottom:none;padding-bottom:0}
+.credit-idx{
+  font-family:var(--f-display);
+  font-size:.45rem;letter-spacing:2px;
+  color:var(--c-dim);flex-shrink:0;padding-top:2px;
+}
+.credit-body{flex:1}
+.credit-name{
+  font-family:var(--f-display);
+  font-size:.6rem;letter-spacing:2px;
+  color:var(--c-white);text-transform:uppercase;
+  margin-bottom:4px;
+}
+.credit-role{font-size:.88rem;color:var(--c-dim);line-height:1.5}
+.credit-badge{
+  font-family:var(--f-display);
+  font-size:.36rem;letter-spacing:2px;
+  color:var(--c-dim);border:1px solid var(--c-border);
+  padding:2px 6px;text-transform:uppercase;
+  flex-shrink:0;align-self:flex-start;margin-top:2px;
+}
+
+
+/* ══════════════════════════════════════════════
+   PAGE: BRAT GENERATOR
+══════════════════════════════════════════════ */
+.img-out{display:none;margin-top:16px}
+.img-out.show{display:block}
+.img-out img{
+  width:100%;display:block;
+  border:1px solid var(--c-border);
+  cursor:pointer;
+  transition:border-color .2s;
+}
+.img-out img:hover{border-color:var(--c-bhi)}
+
+.img-hint{
+  display:none;
+  padding:8px 13px;
+  background:var(--c-surface);
+  border:1px solid var(--c-border);border-top:none;
+  font-family:var(--f-display);
+  font-size:.38rem;letter-spacing:2px;
+  color:var(--c-dim);text-transform:uppercase;text-align:center;
+}
+.img-hint.show{display:block}
+.img-hint span{color:var(--c-mid)}
+
+
+/* ══════════════════════════════════════════════
+   PAGE: TIKTOK DOWNLOADER
+══════════════════════════════════════════════ */
+.tt-result{display:none;margin-top:16px}
+.tt-result.show{display:block}
+
+.tt-thumb{
+  position:relative;width:100%;
+  aspect-ratio:9/16;max-height:300px;
+  overflow:hidden;
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  margin-bottom:13px;
+}
+.tt-thumb img{
+  width:100%;height:100%;
+  object-fit:cover;display:block;
+  filter:brightness(.7);
+}
+.tt-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(0,0,0,.85) 0%,transparent 55%);
+  display:flex;flex-direction:column;
+  justify-content:flex-end;padding:14px;
+}
+.tt-author{
+  font-family:var(--f-display);
+  font-size:.44rem;letter-spacing:3px;
+  color:var(--c-mid);text-transform:uppercase;
+  margin-bottom:5px;
+}
+.tt-title{
+  font-size:.88rem;font-weight:500;
+  color:var(--c-white);line-height:1.4;
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+.tt-dl-lbl{
+  font-family:var(--f-display);
+  font-size:.4rem;letter-spacing:3px;
+  color:var(--c-dim);text-transform:uppercase;
+  margin-bottom:9px;
+}
+
+.tt-err{
+  display:none;margin-top:13px;
+  padding:13px;background:var(--c-surface);
+  border:1px solid var(--c-border);
+  font-family:var(--f-display);
+  font-size:.46rem;letter-spacing:2px;
+  color:var(--c-dim);text-transform:uppercase;text-align:center;
+}
+.tt-err.show{display:block}
+
+
+/* ══════════════════════════════════════════════
+   SITE FOOTER
+══════════════════════════════════════════════ */
+.site-foot{
+  position:relative;z-index:1;
+  text-align:center;
+  padding:22px 18px;
+  font-family:var(--f-display);
+  font-size:.38rem;letter-spacing:4px;
+  color:var(--c-dim);text-transform:uppercase;
+  border-top:1px solid var(--c-border);
+  margin-top:16px;
+}
+
+</style>
 </head>
 <body>
 
-  <!-- Loading Overlay -->
-  <div id="loadingOverlay" class="hidden">
-    <div class="loading-ring"></div>
-    <span class="loading-text">Generating</span>
-  </div>
+<!-- ═══════════════════════════════════════════
+     [3] LOADING OVERLAY
+═══════════════════════════════════════════ -->
+<div id="loading" class="hidden">
+  <div class="ring"></div>
+  <span class="ring-label" id="loading-label">Processing</span>
+</div>
 
-  <div class="wrapper">
 
-    <!-- Header -->
-    <header class="site-header">
-      <p class="eyebrow">Image · Generator · v2.0</p>
-      <h1>Brat <span>/</span> Gen</h1>
-      <div class="header-line"></div>
-    </header>
+<!-- ═══════════════════════════════════════════
+     [4] NAVBAR
+═══════════════════════════════════════════ -->
+<nav id="navbar">
+  <span class="nav-brand">Clairity<em>.tools</em></span>
 
-    <!-- Main Panel -->
-    <div class="panel panel-inner-corners">
+  <!-- Desktop tabs -->
+  <ul class="nav-tabs">
+    <li class="n-tab active" data-tab="home">About</li>
+    <li class="n-tab"        data-tab="credits">Credits</li>
+    <li class="n-tab"        data-tab="brat">Brat Gen</li>
+    <li class="n-tab"        data-tab="tiktok">TikTok DL</li>
+  </ul>
 
-      <!-- Stats -->
-      <div class="stats-grid">
-        <div class="stat-box">
-          <div class="stat-label">
-            <div class="stat-icon"></div>
-            Visitors
-          </div>
-          <div id="totalUsers" class="stat-value loading-val">···</div>
+  <!-- Mobile hamburger -->
+  <button class="n-burger" id="n-burger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- Mobile drawer -->
+<div id="nav-drawer">
+  <span class="n-tab active" data-tab="home">About</span>
+  <span class="n-tab"        data-tab="credits">Credits</span>
+  <span class="n-tab"        data-tab="brat">Brat Gen</span>
+  <span class="n-tab"        data-tab="tiktok">TikTok DL</span>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     PAGE WRAPPER
+═══════════════════════════════════════════ -->
+<div class="page-wrap">
+
+
+  <!-- ═══════════════════════════════════════════
+       [5] PAGE: HOME / ABOUT
+  ═══════════════════════════════════════════ -->
+  <section id="page-home" class="tab-page active">
+
+    <p class="pg-eyebrow">Clairity Tools</p>
+    <h1 class="pg-title">About <span>/</span></h1>
+    <div class="pg-rule"></div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-tag">Visitors</div>
+        <div id="stat-visitors" class="stat-num init">···</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-tag">Requests</div>
+        <div id="stat-requests" class="stat-num init">···</div>
+      </div>
+    </div>
+
+    <!-- About card -->
+    <div class="card">
+      <div class="c-label">Description</div>
+      <p class="about-p">
+        <strong>Clairity</strong> is a lightweight toolset for everyday content needs.
+        Clean, fast, and built without unnecessary noise — just tools that work.
+      </p>
+      <p class="about-p">
+        Crafted by <strong>xZiyy</strong> with a focus on minimal design and functional APIs.
+      </p>
+
+      <div class="hr"></div>
+
+      <div class="c-label">Available Tools</div>
+      <ul class="tool-list">
+        <li>Brat Image Generator<span class="tool-badge live">Live</span></li>
+        <li>TikTok Downloader<span class="tool-badge live">Live</span></li>
+        <li>More tools<span class="tool-badge">Soon</span></li>
+      </ul>
+
+      <div class="c-foot">
+        <span class="c-foot-lbl">WhatsApp Channel</span>
+        <a href="https://whatsapp.com/channel/0029VaPNMxNK0IBsKDGFD90K"
+           target="_blank" class="subtle-a">Open →</a>
+      </div>
+    </div>
+
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
+       [6] PAGE: CREDITS
+  ═══════════════════════════════════════════ -->
+  <section id="page-credits" class="tab-page">
+
+    <p class="pg-eyebrow">Clairity Tools</p>
+    <h1 class="pg-title">Credits <span>/</span></h1>
+    <div class="pg-rule"></div>
+
+    <div class="card">
+      <div class="c-label">Contributors &amp; Resources</div>
+
+      <div class="credit-item">
+        <span class="credit-idx">01</span>
+        <div class="credit-body">
+          <div class="credit-name">xZiyy</div>
+          <div class="credit-role">Developer &amp; designer — frontend, API, and overall concept.</div>
         </div>
-        <div class="stat-box">
-          <div class="stat-label">
-            <div class="stat-icon"></div>
-            Generated
-          </div>
-          <div id="totalRequests" class="stat-value loading-val">···</div>
-        </div>
+        <span class="credit-badge">Author</span>
       </div>
 
-      <!-- Form -->
-      <form id="generateForm">
-        <label class="input-label" for="textInput">Input Text</label>
-        <div class="input-wrapper">
-          <input
-            id="textInput"
-            type="text"
-            placeholder="enter text here..."
-            class="text-input"
-            autocomplete="off"
-          >
+      <div class="credit-item">
+        <span class="credit-idx">02</span>
+        <div class="credit-body">
+          <div class="credit-name">Clairity API</div>
+          <div class="credit-role">Backend powering Brat Generator and TikTok Downloader.</div>
         </div>
-
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">
-            Generate Image
-          </button>
-          <button
-            type="button"
-            onclick="window.location.href='https://whatsapp.com/channel/0029VaPNMxNK0IBsKDGFD90K'"
-            class="btn btn-secondary"
-          >
-            Try on WhatsApp
-          </button>
-        </div>
-      </form>
-
-      <!-- Output Image -->
-      <div class="image-container" id="imageContainer">
-        <img id="generatedImage" alt="Generated Image">
-      </div>
-      <div class="download-hint" id="downloadGuide">
-        <span>↓</span>&nbsp; Click image to download &nbsp;·&nbsp; Klik gambar untuk download
+        <span class="credit-badge">API</span>
       </div>
 
-      <!-- Panel Footer -->
-      <div class="panel-footer">
-        <span class="footer-label">Explore more</span>
-        <a href="#" class="coming-soon-link">Coming Soon</a>
+      <div class="credit-item">
+        <span class="credit-idx">03</span>
+        <div class="credit-body">
+          <div class="credit-name">CountAPI</div>
+          <div class="credit-role">Hit counter by Miles Hilliard — visitor &amp; request tracking.</div>
+        </div>
+        <span class="credit-badge">Service</span>
+      </div>
+
+      <div class="credit-item">
+        <span class="credit-idx">04</span>
+        <div class="credit-body">
+          <div class="credit-name">Orbitron &amp; Rajdhani</div>
+          <div class="credit-role">Typography via Google Fonts.</div>
+        </div>
+        <span class="credit-badge">Fonts</span>
       </div>
 
     </div>
 
-    <!-- Site Footer -->
-    <footer class="site-footer">
-      © 2025 Clairity &nbsp;·&nbsp; created by xZiyy
-    </footer>
+  </section>
 
-  </div>
 
+  <!-- ═══════════════════════════════════════════
+       [7] PAGE: BRAT GENERATOR
+  ═══════════════════════════════════════════ -->
+  <section id="page-brat" class="tab-page">
+
+    <p class="pg-eyebrow">Clairity Tools</p>
+    <h1 class="pg-title">Brat <span>Gen /</span></h1>
+    <div class="pg-rule"></div>
+
+    <div class="card">
+      <div class="c-label">Generate Image</div>
+
+      <form id="brat-form">
+        <label class="f-label" for="brat-input">Text Input</label>
+        <input
+          id="brat-input"
+          type="text"
+          placeholder="enter text here..."
+          class="f-input"
+          autocomplete="off"
+        >
+        <div class="btn-group">
+          <button type="submit" class="btn btn-p">Generate Image</button>
+          <button
+            type="button"
+            class="btn btn-s"
+            onclick="window.open('https://whatsapp.com/channel/0029VaPNMxNK0IBsKDGFD90K','_blank')"
+          >Try on WhatsApp</button>
+        </div>
+      </form>
+
+      <!-- Output -->
+      <div class="img-out" id="brat-output">
+        <img id="brat-img" alt="Generated image">
+      </div>
+      <div class="img-hint" id="brat-hint">
+        <span>↓</span>&nbsp; Click image to download &nbsp;·&nbsp; Klik gambar untuk download
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ═══════════════════════════════════════════
+       [8] PAGE: TIKTOK DOWNLOADER
+  ═══════════════════════════════════════════ -->
+  <section id="page-tiktok" class="tab-page">
+
+    <p class="pg-eyebrow">Clairity Tools</p>
+    <h1 class="pg-title">TikTok <span>DL /</span></h1>
+    <div class="pg-rule"></div>
+
+    <div class="card">
+      <div class="c-label">Download Video</div>
+
+      <form id="tiktok-form">
+        <label class="f-label" for="tiktok-input">TikTok URL</label>
+        <input
+          id="tiktok-input"
+          type="url"
+          placeholder="https://www.tiktok.com/@user/video/..."
+          class="f-input"
+          autocomplete="off"
+        >
+        <div class="btn-group">
+          <button type="submit" class="btn btn-p">Fetch Video</button>
+        </div>
+      </form>
+
+      <!-- Error -->
+      <div class="tt-err" id="tt-err">
+        ✕ &nbsp; Failed to fetch. Check the URL and try again.
+      </div>
+
+      <!-- Result -->
+      <div class="tt-result" id="tt-result">
+
+        <div class="tt-thumb">
+          <img id="tt-thumb-img" src="" alt="Thumbnail">
+          <div class="tt-overlay">
+            <p class="tt-author" id="tt-author"></p>
+            <p class="tt-title"  id="tt-title"></p>
+          </div>
+        </div>
+
+        <p class="tt-dl-lbl">Download Options</p>
+        <div class="btn-row">
+          <a id="tt-btn-video" href="#" target="_blank" class="btn btn-dl">
+            ↓ &nbsp;Video (No WM)
+          </a>
+          <a id="tt-btn-audio" href="#" target="_blank" class="btn btn-dl">
+            ↓ &nbsp;Audio Only
+          </a>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+</div><!-- /page-wrap -->
+
+
+<!-- ═══════════════════════════════════════════
+     [9] FOOTER
+═══════════════════════════════════════════ -->
+<footer class="site-foot">
+  © 2025 Clairity &nbsp;·&nbsp; Created by xZiyy
+</footer>
+
+
+<!-- ═══════════════════════════════════════════
+     [10] JAVASCRIPT
+═══════════════════════════════════════════ -->
 <script>
-  // Firebase Configuration
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
+'use strict';
 
-  firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
+/* ──────────────────────────────────────────
+   CONFIG — change API URLs here
+────────────────────────────────────────── */
+const CFG = {
+  visitorAPI : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-visitor',
+  requestAPI : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-requests',
+  bratAPI    : (t) => `https://clairity-api.vercel.app/api/brat?text=${encodeURIComponent(t)}`,
+  tiktokAPI  : (u) => `https://clairity-api.vercel.app/api/tiktok?url=${encodeURIComponent(u)}`,
+};
 
-  function setStatValue(id, value) {
-    const el = document.getElementById(id);
-    el.textContent = value;
-    el.classList.remove('loading-val');
-    el.classList.add('count-animation');
-    setTimeout(() => el.classList.remove('count-animation'), 400);
+/* ──────────────────────────────────────────
+   LOADING HELPERS
+────────────────────────────────────────── */
+const $loading = document.getElementById('loading');
+const $loadLbl = document.getElementById('loading-label');
+
+function showLoad(msg = 'Processing') {
+  $loadLbl.textContent = msg;
+  $loading.classList.remove('hidden');
+}
+function hideLoad() {
+  $loading.classList.add('hidden');
+}
+
+/* ──────────────────────────────────────────
+   STATS — CountAPI
+   - visitor: hit on every page load
+   - requests: hit only on actual generate/download
+────────────────────────────────────────── */
+async function fetchCount(url) {
+  const r = await fetch(url);
+  const d = await r.json();
+  // CountAPI returns { value: N } or { hits: N } depending on version
+  return d.value ?? d.hits ?? d.count ?? null;
+}
+
+function setStatNum(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = (val !== null && val !== undefined) ? val : '—';
+  el.classList.remove('init', 'count-anim');
+  void el.offsetWidth;
+  el.classList.add('count-anim');
+}
+
+// Hit visitor counter + update display
+async function initVisitor() {
+  try {
+    const n = await fetchCount(CFG.visitorAPI);
+    setStatNum('stat-visitors', n);
+  } catch {
+    setStatNum('stat-visitors', '—');
   }
+}
 
-  function trackVisitor() {
-    const visitorId = localStorage.getItem('visitorId') || generateVisitorId();
-    localStorage.setItem('visitorId', visitorId);
-    database.ref('visitors/' + visitorId).set({
-      lastVisit: firebase.database.ServerValue.TIMESTAMP
-    });
+// Hit request counter + update display
+async function hitRequest() {
+  try {
+    const n = await fetchCount(CFG.requestAPI);
+    setStatNum('stat-requests', n);
+  } catch { /* silent */ }
+}
+
+// Read-only initial request count (use same hit for now — CountAPI increments on every call)
+async function initRequests() {
+  try {
+    const n = await fetchCount(CFG.requestAPI);
+    setStatNum('stat-requests', n);
+  } catch {
+    setStatNum('stat-requests', '—');
   }
+}
 
-  function generateVisitorId() {
-    return 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+// Fire on load
+initVisitor();
+initRequests();
+
+/* ──────────────────────────────────────────
+   NAVBAR — Tab System
+────────────────────────────────────────── */
+const allNavTabs = document.querySelectorAll('.n-tab');
+const allPages   = document.querySelectorAll('.tab-page');
+const $burger    = document.getElementById('n-burger');
+const $drawer    = document.getElementById('nav-drawer');
+
+function switchTab(name) {
+  allNavTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  allPages.forEach(p => p.classList.toggle('active', p.id === `page-${name}`));
+  $drawer.classList.remove('open');
+}
+
+allNavTabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+$burger.addEventListener('click', () => $drawer.classList.toggle('open'));
+
+/* ──────────────────────────────────────────
+   BRAT GENERATOR
+────────────────────────────────────────── */
+document.getElementById('brat-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const text    = document.getElementById('brat-input').value.trim();
+  const $output = document.getElementById('brat-output');
+  const $img    = document.getElementById('brat-img');
+  const $hint   = document.getElementById('brat-hint');
+
+  if (!text) return;
+
+  showLoad('Generating');
+  $output.classList.remove('show');
+  $hint.classList.remove('show');
+
+  try {
+    const res = await fetch(CFG.bratAPI(text));
+    if (!res.ok) throw new Error('api error');
+
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+
+    $img.src = url;
+    $output.classList.add('show');
+    $hint.classList.add('show');
+
+    $img.onclick = () => {
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'brat_' + text.toLowerCase().replace(/\s+/g, '_') + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    // Increment global request count
+    hitRequest();
+
+  } catch {
+    alert('Failed to generate image. Please try again.');
+  } finally {
+    hideLoad();
   }
+});
 
-  database.ref('stats/totalRequests').on('value', (snapshot) => {
-    setStatValue('totalRequests', snapshot.val() || 0);
-  });
+/* ──────────────────────────────────────────
+   TIKTOK DOWNLOADER
+────────────────────────────────────────── */
+document.getElementById('tiktok-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
 
-  database.ref('visitors').on('value', (snapshot) => {
-    setStatValue('totalUsers', snapshot.numChildren());
-  });
+  const url      = document.getElementById('tiktok-input').value.trim();
+  const $result  = document.getElementById('tt-result');
+  const $err     = document.getElementById('tt-err');
+  const $thumb   = document.getElementById('tt-thumb-img');
+  const $author  = document.getElementById('tt-author');
+  const $title   = document.getElementById('tt-title');
+  const $btnVid  = document.getElementById('tt-btn-video');
+  const $btnAud  = document.getElementById('tt-btn-audio');
 
-  function incrementRequests() {
-    database.ref('stats/totalRequests').transaction(v => (v || 0) + 1);
+  if (!url) return;
+
+  showLoad('Fetching');
+  $result.classList.remove('show');
+  $err.classList.remove('show');
+
+  try {
+    const res  = await fetch(CFG.tiktokAPI(url));
+    const data = await res.json();
+
+    if (!data.status || !data.result) throw new Error('no result');
+
+    const r = data.result;
+
+    $thumb.src          = r.thumbnail || '';
+    $author.textContent = r.author    || '';
+    $title.textContent  = r.title     || '';
+    $btnVid.href        = r.nowm      || '#';
+    $btnAud.href        = r.audio     || '#';
+
+    $result.classList.add('show');
+
+    // Increment global request count
+    hitRequest();
+
+  } catch {
+    $err.classList.add('show');
+  } finally {
+    hideLoad();
   }
-
-  trackVisitor();
-
-  document.getElementById("generateForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const text = document.getElementById("textInput").value.trim();
-    const loadingOverlay = document.getElementById("loadingOverlay");
-    const imageEl = document.getElementById("generatedImage");
-    const imageContainer = document.getElementById("imageContainer");
-    const downloadGuide = document.getElementById("downloadGuide");
-
-    if (!text) return;
-
-    loadingOverlay.classList.remove("hidden");
-    imageContainer.classList.remove("visible");
-    downloadGuide.classList.remove("visible");
-
-    const imageUrl = `https://clairity-api.vercel.app/api/brat?text=${encodeURIComponent(text)}`;
-
-    try {
-      const response = await fetch(imageUrl);
-      if (!response.ok) throw new Error("Failed");
-
-      const blob = await response.blob();
-      const objectURL = URL.createObjectURL(blob);
-
-      imageEl.src = objectURL;
-      imageContainer.classList.add("visible");
-      downloadGuide.classList.add("visible");
-      incrementRequests();
-
-      imageEl.onclick = () => {
-        const a = document.createElement("a");
-        a.href = objectURL;
-        a.download = "brat_" + text.toLowerCase().replace(/\s+/g, '_') + ".png";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      };
-    } catch (err) {
-      console.error(err);
-      alert("Error generating image. Please try again.");
-    } finally {
-      loadingOverlay.classList.add("hidden");
-    }
-  });
+});
 </script>
+
 </body>
 </html>
