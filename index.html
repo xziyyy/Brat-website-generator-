@@ -1014,11 +1014,12 @@ let ttAudioUrl = '';
 // Trigger download via proxy (bypass CORS)
 function triggerDownload(cdnUrl, filename) {
   if (!cdnUrl) return;
-  // Route melalui proxy Vercel — server yg fetch CDN, bukan browser
-  const proxyUrl = CFG.proxyAPI(cdnUrl, filename);
+  // Bersihkan filename — hapus .html atau ekstensi nyasar
+  const cleanName = filename.replace(/\.html?$/i, '');
+  const proxyUrl  = CFG.proxyAPI(cdnUrl, cleanName);
   const a = document.createElement('a');
   a.href = proxyUrl;
-  a.download = filename;
+  a.download = cleanName;
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
