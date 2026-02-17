@@ -563,6 +563,12 @@ body::before{
   margin-bottom:9px;
 }
 
+.tt-dl-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
 .tt-err{
   display:none;margin-top:13px;
   padding:13px;background:var(--c-surface);
@@ -827,14 +833,8 @@ body::before{
         </div>
 
         <p class="tt-dl-lbl">Download Options</p>
-        <div class="btn-row">
-          <button id="tt-btn-video" class="btn btn-dl">
-            ↓ &nbsp;Video (No WM)
-          </button>
-          <button id="tt-btn-audio" class="btn btn-dl">
-            ↓ &nbsp;Audio Only
-          </button>
-        </div>
+        <!-- Tombol download di-generate dinamis oleh JS -->
+        <div id="tt-dl-buttons" class="tt-dl-grid"></div>
 
       </div>
 
@@ -864,13 +864,10 @@ body::before{
    CONFIG — change API URLs here
 ────────────────────────────────────────── */
 const CFG = {
-  visitorAPI   : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-visitor',
-  requestAPI   : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-requests',
-  bratAPI      : (t) => `https://clairity-api.vercel.app/api/brat?text=${encodeURIComponent(t)}`,
-  tiktokAPI    : (u) => `https://clairity-api.vercel.app/api/tiktok?url=${encodeURIComponent(u)}`,
-  // Download langsung — fresh fetch CDN tiap request, type=video|audio
-  tiktokVideo  : (u) => `https://clairity-api.vercel.app/api/tiktok/download?type=video&url=${encodeURIComponent(u)}`,
-  tiktokAudio  : (u) => `https://clairity-api.vercel.app/api/tiktok/download?type=audio&url=${encodeURIComponent(u)}`,
+  visitorAPI  : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-visitor',
+  requestAPI  : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-requests',
+  bratAPI     : (t) => `https://clairity-api.vercel.app/api/brat?text=${encodeURIComponent(t)}`,
+  tiktokAPI   : (u) => `https://clairity-api.vercel.app/api/tiksave?url=${encodeURIComponent(u)}`,
 };
 
 /* ──────────────────────────────────────────
@@ -1006,72 +1003,98 @@ document.getElementById('brat-form').addEventListener('submit', async (e) => {
 
 /* ──────────────────────────────────────────
    TIKTOK DOWNLOADER
+   Pakai API: /api/tiksave
+   Response:  data.videoData.thumbnail
+              data.videoData.title
+              data.videoData.downloadLinks[]
+                .label  → "Unduh MP4 [1]", "Unduh MP3", dll
+                .link   → URL download langsung
 ────────────────────────────────────────── */
 
-// Simpan TikTok URL asli — proxy fetch ulang CDN link setiap download
-// (CDN link lovetik expire cepat, jadi tidak bisa disimpan)
-let ttOriginalUrl = '';
+// Mapping label dari API → nama tombol yang ditampilkan
+function getLabelDisplay(label) {
+  const l = label.toLowerCase();
+  if (l.includes('mp3'))        return '↓  Audio (MP3)';
+  if (l.includes('hd'))         return '↓  Video HD';
+  if (l.includes('[1]'))        return '↓  Video (No WM)';
+  if (l.includes('[2]'))        return '↓  Video Alt';
+  return '↓  ' + label;
+}
 
-// Trigger download — arahkan ke proxy yang fetch CDN fresh
-function triggerDownload(proxyUrl, filename) {
+// Ambil nama file dari label
+function getFilename(label) {
+  const l = label.toLowerCase();
+  if (l.includes('mp3')) return 'tiktok_audio.mp3';
+  if (l.includes('hd'))  return 'tiktok_hd.mp4';
+  return 'tiktok_video.mp4';
+}
+
+// Download via <a> click — link dari tiksave sudah siap pakai
+function triggerDownload(url, filename) {
   const a         = document.createElement('a');
-  a.href          = proxyUrl;
+  a.href          = url;
   a.download      = filename;
+  a.target        = '_blank';
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
 }
 
-document.getElementById('tt-btn-video').addEventListener('click', () => {
-  if (!ttOriginalUrl) return;
-  triggerDownload(CFG.tiktokVideo(ttOriginalUrl), 'tiktok_video.mp4');
-});
-
-document.getElementById('tt-btn-audio').addEventListener('click', () => {
-  if (!ttOriginalUrl) return;
-  triggerDownload(CFG.tiktokAudio(ttOriginalUrl), 'tiktok_audio.mp3');
-});
-
 document.getElementById('tiktok-form').addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const url     = document.getElementById('tiktok-input').value.trim();
-  const $result = document.getElementById('tt-result');
-  const $err    = document.getElementById('tt-err');
-  const $thumb  = document.getElementById('tt-thumb-img');
-  const $author = document.getElementById('tt-author');
-  const $title  = document.getElementById('tt-title');
+  const url      = document.getElementById('tiktok-input').value.trim();
+  const $result  = document.getElementById('tt-result');
+  const $err     = document.getElementById('tt-err');
+  const $thumb   = document.getElementById('tt-thumb-img');
+  const $author  = document.getElementById('tt-author');
+  const $title   = document.getElementById('tt-title');
+  const $dlBtns  = document.getElementById('tt-dl-buttons');
 
   if (!url) return;
 
   showLoad('Fetching');
   $result.classList.remove('show');
   $err.classList.remove('show');
-  ttOriginalUrl = '';
+  $dlBtns.innerHTML = '';
 
   try {
     const res  = await fetch(CFG.tiktokAPI(url));
     const data = await res.json();
 
-    if (!data.status || !data.result) throw new Error('no result');
+    // Validasi response
+    if (!data.success || !data.data || !data.data.videoData) {
+      throw new Error('Invalid response');
+    }
 
-    const r = data.result;
+    const v = data.data.videoData;
 
-    $thumb.src          = r.thumbnail || '';
-    $author.textContent = r.author    || '';
-    $title.textContent  = r.title     || '';
+    // Isi thumbnail & judul
+    $thumb.src           = v.thumbnail || '';
+    $title.textContent   = v.title     || '';
+    // tiksave tidak ada field author — kosongkan
+    $author.textContent  = '';
 
-    // Simpan URL TikTok ASLI — bukan CDN link yang cepat expire
-    ttOriginalUrl = url;
-
-    document.getElementById('tt-btn-video').style.opacity = '1';
-    document.getElementById('tt-btn-audio').style.opacity = '1';
+    // Render tombol download dari downloadLinks[]
+    if (Array.isArray(v.downloadLinks) && v.downloadLinks.length > 0) {
+      v.downloadLinks.forEach(item => {
+        if (!item.link) return;
+        const btn = document.createElement('button');
+        btn.className   = 'btn btn-dl';
+        btn.textContent = getLabelDisplay(item.label || 'Download');
+        btn.addEventListener('click', () => {
+          triggerDownload(item.link, getFilename(item.label || ''));
+        });
+        $dlBtns.appendChild(btn);
+      });
+    }
 
     $result.classList.add('show');
     hitRequest();
 
-  } catch {
+  } catch (err) {
+    console.error('[tiktok]', err.message);
     $err.classList.add('show');
   } finally {
     hideLoad();
