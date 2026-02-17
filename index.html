@@ -37,17 +37,17 @@
 :root {
   --c-bg:       #000000;
   --c-deep:     #040404;
-  --c-panel:    #090909;
-  --c-surface:  #0e0e0e;
-  --c-raised:   #131313;
-  --c-border:   #1a1a1a;
-  --c-bhi:      #2a2a2a;
-  --c-muted:    #303030;
-  --c-dim:      #555555;
-  --c-mid:      #777777;
-  --c-text:     #999999;
-  --c-bright:   #bbbbbb;
-  --c-white:    #e0e0e0;
+  --c-panel:    #0a0a0a;
+  --c-surface:  #101010;
+  --c-raised:   #161616;
+  --c-border:   #222222;
+  --c-bhi:      #363636;
+  --c-muted:    #444444;
+  --c-dim:      #707070;   /* was #555 — labels, eyebrows */
+  --c-mid:      #959595;   /* was #777 — secondary text   */
+  --c-text:     #b8b8b8;   /* was #999 — body text        */
+  --c-bright:   #d4d4d4;   /* was #bbb — bright text      */
+  --c-white:    #f0f0f0;   /* was #e0 — headings          */
   --nav-h:      52px;
   --f-display:  'Orbitron', monospace;
   --f-body:     'Rajdhani', sans-serif;
@@ -119,8 +119,8 @@ body::before{
 }
 .ring-label{
   font-family:var(--f-display);
-  font-size:.42rem;letter-spacing:5px;
-  color:var(--c-dim);text-transform:uppercase;
+  font-size:.48rem;letter-spacing:5px;
+  color:var(--c-mid);text-transform:uppercase;
   animation:blink 1.2s step-end infinite;
 }
 
@@ -152,9 +152,9 @@ body::before{
 }
 .n-tab{
   font-family:var(--f-display);
-  font-size:.44rem;letter-spacing:2px;
+  font-size:.48rem;letter-spacing:2px;
   text-transform:uppercase;
-  color:var(--c-dim);
+  color:var(--c-mid);
   padding:7px 13px;
   border:1px solid transparent;
   transition:all .2s;
@@ -238,18 +238,18 @@ body::before{
 /* Page header */
 .pg-eyebrow{
   font-family:var(--f-display);
-  font-size:.4rem;letter-spacing:5px;
+  font-size:.5rem;letter-spacing:5px;
   color:var(--c-dim);text-transform:uppercase;
   margin-bottom:7px;
 }
 .pg-title{
   font-family:var(--f-display);
-  font-size:1.35rem;font-weight:900;
+  font-size:1.45rem;font-weight:900;
   letter-spacing:2px;color:var(--c-white);
   text-transform:uppercase;line-height:1;
   margin-bottom:5px;
 }
-.pg-title span{color:var(--c-dim);font-weight:400}
+.pg-title span{color:var(--c-mid);font-weight:400}
 .pg-rule{width:38px;height:1px;background:var(--c-bhi);margin-bottom:26px}
 
 /* Card */
@@ -278,8 +278,8 @@ body::before{
 /* Card label */
 .c-label{
   font-family:var(--f-display);
-  font-size:.42rem;letter-spacing:3px;
-  color:var(--c-dim);text-transform:uppercase;
+  font-size:.5rem;letter-spacing:3px;
+  color:var(--c-mid);text-transform:uppercase;
   margin-bottom:15px;
   display:flex;align-items:center;gap:7px;
 }
@@ -296,8 +296,8 @@ body::before{
 /* Form label */
 .f-label{
   font-family:var(--f-display);
-  font-size:.42rem;letter-spacing:3px;
-  color:var(--c-dim);text-transform:uppercase;
+  font-size:.5rem;letter-spacing:3px;
+  color:var(--c-mid);text-transform:uppercase;
   margin-bottom:7px;display:block;
 }
 
@@ -308,7 +308,7 @@ body::before{
   border:1px solid var(--c-border);
   color:var(--c-white);
   font-family:var(--f-body);
-  font-size:.95rem;font-weight:500;
+  font-size:1rem;font-weight:500;
   letter-spacing:.4px;
   padding:13px 15px;
   outline:none;
@@ -322,7 +322,7 @@ body::before{
 .btn{
   display:block;width:100%;
   font-family:var(--f-display);
-  font-size:.5rem;letter-spacing:3px;
+  font-size:.58rem;letter-spacing:3px;
   text-transform:uppercase;
   padding:14px 18px;
   transition:all .2s;
@@ -378,8 +378,8 @@ body::before{
 }
 .stat-tag{
   font-family:var(--f-display);
-  font-size:.4rem;letter-spacing:2px;
-  color:var(--c-dim);text-transform:uppercase;
+  font-size:.48rem;letter-spacing:2px;
+  color:var(--c-mid);text-transform:uppercase;
   margin-bottom:8px;
   display:flex;align-items:center;gap:5px;
 }
@@ -408,8 +408,8 @@ body::before{
 }
 .c-foot-lbl{
   font-family:var(--f-display);
-  font-size:.4rem;letter-spacing:2px;
-  color:var(--c-dim);text-transform:uppercase;
+  font-size:.48rem;letter-spacing:2px;
+  color:var(--c-mid);text-transform:uppercase;
 }
 .subtle-a{
   font-family:var(--f-display);
@@ -426,17 +426,17 @@ body::before{
    PAGE: HOME / ABOUT
 ══════════════════════════════════════════════ */
 .about-p{
-  font-size:.92rem;line-height:1.8;
-  color:var(--c-mid);margin-bottom:12px;
+  font-size:1rem;line-height:1.8;
+  color:var(--c-text);margin-bottom:12px;
 }
-.about-p strong{color:var(--c-bright);font-weight:600}
+.about-p strong{color:var(--c-white);font-weight:600}
 
 .tool-list{list-style:none;display:flex;flex-direction:column;gap:7px}
 .tool-list li{
   display:flex;align-items:center;gap:10px;
   font-family:var(--f-display);
-  font-size:.5rem;letter-spacing:2px;
-  color:var(--c-mid);text-transform:uppercase;
+  font-size:.55rem;letter-spacing:2px;
+  color:var(--c-text);text-transform:uppercase;
   padding:10px 13px;
   background:var(--c-surface);
   border:1px solid var(--c-border);
@@ -470,21 +470,21 @@ body::before{
 .credit-item:last-child{border-bottom:none;padding-bottom:0}
 .credit-idx{
   font-family:var(--f-display);
-  font-size:.45rem;letter-spacing:2px;
-  color:var(--c-dim);flex-shrink:0;padding-top:2px;
+  font-size:.5rem;letter-spacing:2px;
+  color:var(--c-mid);flex-shrink:0;padding-top:2px;
 }
 .credit-body{flex:1}
 .credit-name{
   font-family:var(--f-display);
-  font-size:.6rem;letter-spacing:2px;
+  font-size:.65rem;letter-spacing:2px;
   color:var(--c-white);text-transform:uppercase;
   margin-bottom:4px;
 }
-.credit-role{font-size:.88rem;color:var(--c-dim);line-height:1.5}
+.credit-role{font-size:.92rem;color:var(--c-text);line-height:1.5}
 .credit-badge{
   font-family:var(--f-display);
-  font-size:.36rem;letter-spacing:2px;
-  color:var(--c-dim);border:1px solid var(--c-border);
+  font-size:.42rem;letter-spacing:2px;
+  color:var(--c-mid);border:1px solid var(--c-border);
   padding:2px 6px;text-transform:uppercase;
   flex-shrink:0;align-self:flex-start;margin-top:2px;
 }
@@ -509,11 +509,11 @@ body::before{
   background:var(--c-surface);
   border:1px solid var(--c-border);border-top:none;
   font-family:var(--f-display);
-  font-size:.38rem;letter-spacing:2px;
-  color:var(--c-dim);text-transform:uppercase;text-align:center;
+  font-size:.45rem;letter-spacing:2px;
+  color:var(--c-mid);text-transform:uppercase;text-align:center;
 }
 .img-hint.show{display:block}
-.img-hint span{color:var(--c-mid)}
+.img-hint span{color:var(--c-bright)}
 
 
 /* ══════════════════════════════════════════════
@@ -543,12 +543,12 @@ body::before{
 }
 .tt-author{
   font-family:var(--f-display);
-  font-size:.44rem;letter-spacing:3px;
-  color:var(--c-mid);text-transform:uppercase;
+  font-size:.5rem;letter-spacing:3px;
+  color:var(--c-bright);text-transform:uppercase;
   margin-bottom:5px;
 }
 .tt-title{
-  font-size:.88rem;font-weight:500;
+  font-size:.92rem;font-weight:500;
   color:var(--c-white);line-height:1.4;
   display:-webkit-box;
   -webkit-line-clamp:3;
@@ -558,8 +558,8 @@ body::before{
 
 .tt-dl-lbl{
   font-family:var(--f-display);
-  font-size:.4rem;letter-spacing:3px;
-  color:var(--c-dim);text-transform:uppercase;
+  font-size:.48rem;letter-spacing:3px;
+  color:var(--c-mid);text-transform:uppercase;
   margin-bottom:9px;
 }
 
@@ -582,8 +582,8 @@ body::before{
   text-align:center;
   padding:22px 18px;
   font-family:var(--f-display);
-  font-size:.38rem;letter-spacing:4px;
-  color:var(--c-dim);text-transform:uppercase;
+  font-size:.46rem;letter-spacing:4px;
+  color:var(--c-mid);text-transform:uppercase;
   border-top:1px solid var(--c-border);
   margin-top:16px;
 }
@@ -828,12 +828,12 @@ body::before{
 
         <p class="tt-dl-lbl">Download Options</p>
         <div class="btn-row">
-          <a id="tt-btn-video" href="#" target="_blank" class="btn btn-dl">
+          <button id="tt-btn-video" class="btn btn-dl">
             ↓ &nbsp;Video (No WM)
-          </a>
-          <a id="tt-btn-audio" href="#" target="_blank" class="btn btn-dl">
+          </button>
+          <button id="tt-btn-audio" class="btn btn-dl">
             ↓ &nbsp;Audio Only
-          </a>
+          </button>
         </div>
 
       </div>
@@ -1004,6 +1004,45 @@ document.getElementById('brat-form').addEventListener('submit', async (e) => {
 /* ──────────────────────────────────────────
    TIKTOK DOWNLOADER
 ────────────────────────────────────────── */
+
+// Store URLs for download after fetch
+let ttVideoUrl = '';
+let ttAudioUrl = '';
+
+// Blob-fetch download: fetches file as blob then triggers save
+// Falls back to window.open if CORS blocks the fetch
+async function blobDownload(url, filename) {
+  try {
+    showLoad('Downloading');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('fetch failed');
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
+  } catch {
+    // CORS fallback — open in new tab so browser handles download
+    window.open(url, '_blank');
+  } finally {
+    hideLoad();
+  }
+}
+
+document.getElementById('tt-btn-video').addEventListener('click', (e) => {
+  e.preventDefault();
+  if (ttVideoUrl) blobDownload(ttVideoUrl, 'tiktok_video.mp4');
+});
+
+document.getElementById('tt-btn-audio').addEventListener('click', (e) => {
+  e.preventDefault();
+  if (ttAudioUrl) blobDownload(ttAudioUrl, 'tiktok_audio.mp3');
+});
+
 document.getElementById('tiktok-form').addEventListener('submit', async (e) => {
   e.preventDefault();
 
@@ -1013,14 +1052,14 @@ document.getElementById('tiktok-form').addEventListener('submit', async (e) => {
   const $thumb   = document.getElementById('tt-thumb-img');
   const $author  = document.getElementById('tt-author');
   const $title   = document.getElementById('tt-title');
-  const $btnVid  = document.getElementById('tt-btn-video');
-  const $btnAud  = document.getElementById('tt-btn-audio');
 
   if (!url) return;
 
   showLoad('Fetching');
   $result.classList.remove('show');
   $err.classList.remove('show');
+  ttVideoUrl = '';
+  ttAudioUrl = '';
 
   try {
     const res  = await fetch(CFG.tiktokAPI(url));
@@ -1033,8 +1072,14 @@ document.getElementById('tiktok-form').addEventListener('submit', async (e) => {
     $thumb.src          = r.thumbnail || '';
     $author.textContent = r.author    || '';
     $title.textContent  = r.title     || '';
-    $btnVid.href        = r.nowm      || '#';
-    $btnAud.href        = r.audio     || '#';
+
+    // Store for download buttons
+    ttVideoUrl = r.nowm  || '';
+    ttAudioUrl = r.audio || '';
+
+    // Show/hide buttons based on availability
+    document.getElementById('tt-btn-video').style.display = ttVideoUrl ? '' : 'none';
+    document.getElementById('tt-btn-audio').style.display = ttAudioUrl ? '' : 'none';
 
     $result.classList.add('show');
 
