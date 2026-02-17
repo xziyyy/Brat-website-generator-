@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brat Image Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --true-black: #000000;
+      --amoled-deep: #050505;
+      --amoled-panel: #0a0a0a;
+      --amoled-surface: #0f0f0f;
+      --amoled-raised: #141414;
+      --amoled-border: #1c1c1c;
+      --amoled-border-bright: #2a2a2a;
+      --amoled-muted: #333333;
+      --amoled-text-dim: #555555;
+      --amoled-text-mid: #888888;
+      --amoled-text: #aaaaaa;
+      --amoled-text-bright: #cccccc;
+      --amoled-white: #e8e8e8;
+      --corner-accent: #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--true-black);
+      color: var(--amoled-text);
+      font-family: 'Rajdhani', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* === GRID BACKGROUND === */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* === SCANLINE OVERLAY === */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent 0,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* === LOADING OVERLAY === */
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    #loadingOverlay.hidden { display: none; }
+
+    .loading-ring {
+      width: 44px;
+      height: 44px;
+      position: relative;
+    }
+
+    .loading-ring::before,
+    .loading-ring::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+    }
+
+    .loading-ring::before {
+      border: 2px solid var(--amoled-border);
+    }
+
+    .loading-ring::after {
+      border: 2px solid transparent;
+      border-top-color: var(--amoled-white);
+      animation: spin 0.9s linear infinite;
+    }
+
+    .loading-text {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.55rem;
+      letter-spacing: 4px;
+      color: var(--amoled-text-dim);
+      text-transform: uppercase;
+      animation: blink 1.2s step-end infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    /* === MAIN WRAPPER === */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 460px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    /* === HEADER === */
+    .site-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .site-header .eyebrow {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.5rem;
+      letter-spacing: 5px;
+      color: var(--amoled-text-dim);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .site-header h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: var(--amoled-white);
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .site-header h1 span {
+      color: var(--amoled-text-dim);
+      font-weight: 400;
+    }
+
+    .header-line {
+      width: 48px;
+      height: 1px;
+      background: var(--amoled-border-bright);
+      margin: 14px auto 0;
+    }
+
+    /* === PANEL === */
+    .panel {
+      background: var(--amoled-panel);
+      border: 1px solid var(--amoled-border);
+      position: relative;
+      padding: 28px;
+    }
+
+    /* Corner accents */
+    .panel::before,
+    .panel::after {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+    }
+
+    .panel::before {
+      top: -1px; left: -1px;
+      border-top: 2px solid var(--amoled-text-dim);
+      border-left: 2px solid var(--amoled-text-dim);
+    }
+
+    .panel::after {
+      bottom: -1px; right: -1px;
+      border-bottom: 2px solid var(--amoled-text-dim);
+      border-right: 2px solid var(--amoled-text-dim);
+    }
+
+    .panel-inner-corners::before,
+    .panel-inner-corners::after {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+    }
+
+    .panel-inner-corners::before {
+      top: -1px; right: -1px;
+      border-top: 2px solid var(--amoled-border-bright);
+      border-right: 2px solid var(--amoled-border-bright);
+    }
+
+    .panel-inner-corners::after {
+      bottom: -1px; left: -1px;
+      border-bottom: 2px solid var(--amoled-border-bright);
+      border-left: 2px solid var(--amoled-border-bright);
+    }
+
+    /* === STATS === */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .stat-box {
+      background: var(--amoled-surface);
+      border: 1px solid var(--amoled-border);
+      padding: 16px;
+      position: relative;
+    }
+
+    .stat-box::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, var(--amoled-border-bright), transparent);
+    }
+
+    .stat-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.45rem;
+      letter-spacing: 3px;
+      color: var(--amoled-text-dim);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .stat-icon {
+      width: 6px;
+      height: 6px;
+      background: var(--amoled-muted);
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+      flex-shrink: 0;
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--amoled-white);
+      line-height: 1;
+      transition: all 0.3s;
+    }
+
+    .stat-value.loading-val {
+      font-size: 0.7rem;
+      color: var(--amoled-text-dim);
+      letter-spacing: 2px;
+    }
+
+    /* === FORM ELEMENTS === */
+    .input-wrapper {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .input-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.45rem;
+      letter-spacing: 3px;
+      color: var(--amoled-text-dim);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .text-input {
+      width: 100%;
+      background: var(--amoled-surface);
+      border: 1px solid var(--amoled-border);
+      color: var(--amoled-white);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 1px;
+      padding: 14px 16px;
+      outline: none;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+      border-radius: 0;
+    }
+
+    .text-input::placeholder {
+      color: var(--amoled-muted);
+      font-style: italic;
+      letter-spacing: 1px;
+    }
+
+    .text-input:focus {
+      border-color: var(--amoled-text-mid);
+      background: var(--amoled-raised);
+    }
+
+    /* === BUTTONS === */
+    .btn {
+      width: 100%;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+      border: none;
+      outline: none;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background 0.2s;
+    }
+
+    .btn:hover::before {
+      background: rgba(255,255,255,0.04);
+    }
+
+    .btn-primary {
+      background: var(--amoled-raised);
+      border: 1px solid var(--amoled-border-bright);
+      color: var(--amoled-white);
+    }
+
+    .btn-primary:hover {
+      border-color: var(--amoled-text-mid);
+      background: var(--amoled-surface);
+    }
+
+    .btn-primary:active {
+      background: var(--amoled-muted);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--amoled-border);
+      color: var(--amoled-text-mid);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--amoled-border-bright);
+      color: var(--amoled-text);
+    }
+
+    .btn-secondary:active {
+      background: var(--amoled-surface);
+    }
+
+    /* Corner detail on primary btn */
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 8px; height: 8px;
+      border-top: 1px solid var(--amoled-text-mid);
+      border-right: 1px solid var(--amoled-text-mid);
+    }
+
+    .form-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    /* === DIVIDER === */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: var(--amoled-border);
+    }
+
+    .divider-text {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.45rem;
+      letter-spacing: 3px;
+      color: var(--amoled-text-dim);
+      text-transform: uppercase;
+    }
+
+    /* === IMAGE OUTPUT === */
+    .image-container {
+      margin-top: 20px;
+      position: relative;
+      display: none;
+    }
+
+    .image-container.visible { display: block; }
+
+    .image-container::before {
+      content: 'OUTPUT';
+      position: absolute;
+      top: 8px; right: 10px;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.4rem;
+      letter-spacing: 3px;
+      color: var(--amoled-text-dim);
+      opacity: 0.5;
+      z-index: 1;
+    }
+
+    #generatedImage {
+      width: 100%;
+      display: block;
+      cursor: pointer;
+      border: 1px solid var(--amoled-border);
+      transition: border-color 0.2s;
+      filter: brightness(0.97);
+    }
+
+    #generatedImage:hover {
+      border-color: var(--amoled-border-bright);
+    }
+
+    .download-hint {
+      display: none;
+      margin-top: 8px;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.45rem;
+      letter-spacing: 2px;
+      color: var(--amoled-text-dim);
+      text-transform: uppercase;
+      text-align: center;
+      padding: 8px;
+      border: 1px solid var(--amoled-border);
+      border-top: none;
+      background: var(--amoled-surface);
+    }
+
+    .download-hint.visible { display: block; }
+
+    .download-hint span { color: var(--amoled-text-mid); }
+
+    /* === FOOTER SECTION === */
+    .panel-footer {
+      border-top: 1px solid var(--amoled-border);
+      padding-top: 20px;
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.45rem;
+      letter-spacing: 2px;
+      color: var(--amoled-text-dim);
+      text-transform: uppercase;
+    }
+
+    .coming-soon-link {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.5rem;
+      letter-spacing: 2px;
+      color: var(--amoled-text-mid);
+      text-decoration: none;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--amoled-border);
+      padding-bottom: 2px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .coming-soon-link:hover {
+      color: var(--amoled-text);
+      border-color: var(--amoled-text-mid);
+    }
+
+    /* === SITE FOOTER === */
+    .site-footer {
+      margin-top: 24px;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.4rem;
+      letter-spacing: 3px;
+      color: var(--amoled-text-dim);
+      text-transform: uppercase;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* === COUNT ANIMATION === */
+    @keyframes countUp {
+      0%   { transform: translateY(6px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+
+    .count-animation {
+      animation: countUp 0.35s cubic-bezier(0.23,1,0.32,1);
+    }
+
+    /* === SCROLLBAR === */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--true-black); }
+    ::-webkit-scrollbar-thumb { background: var(--amoled-border-bright); }
+
+    /* === ENTRANCE ANIMATIONS === */
+    .wrapper {
+      animation: fadeIn 0.6s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel .stats-grid .stat-box:nth-child(1) {
+      animation: fadeIn 0.5s 0.1s ease both;
+    }
+
+    .panel .stats-grid .stat-box:nth-child(2) {
+      animation: fadeIn 0.5s 0.2s ease both;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="hidden">
+    <div class="loading-ring"></div>
+    <span class="loading-text">Generating</span>
+  </div>
+
+  <div class="wrapper">
+
+    <!-- Header -->
+    <header class="site-header">
+      <p class="eyebrow">Image · Generator · v2.0</p>
+      <h1>Brat <span>/</span> Gen</h1>
+      <div class="header-line"></div>
+    </header>
+
+    <!-- Main Panel -->
+    <div class="panel panel-inner-corners">
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">
+            <div class="stat-icon"></div>
+            Visitors
+          </div>
+          <div id="totalUsers" class="stat-value loading-val">···</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">
+            <div class="stat-icon"></div>
+            Generated
+          </div>
+          <div id="totalRequests" class="stat-value loading-val">···</div>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <form id="generateForm">
+        <label class="input-label" for="textInput">Input Text</label>
+        <div class="input-wrapper">
+          <input
+            id="textInput"
+            type="text"
+            placeholder="enter text here..."
+            class="text-input"
+            autocomplete="off"
+          >
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">
+            Generate Image
+          </button>
+          <button
+            type="button"
+            onclick="window.location.href='https://whatsapp.com/channel/0029VaPNMxNK0IBsKDGFD90K'"
+            class="btn btn-secondary"
+          >
+            Try on WhatsApp
+          </button>
+        </div>
+      </form>
+
+      <!-- Output Image -->
+      <div class="image-container" id="imageContainer">
+        <img id="generatedImage" alt="Generated Image">
+      </div>
+      <div class="download-hint" id="downloadGuide">
+        <span>↓</span>&nbsp; Click image to download &nbsp;·&nbsp; Klik gambar untuk download
+      </div>
+
+      <!-- Panel Footer -->
+      <div class="panel-footer">
+        <span class="footer-label">Explore more</span>
+        <a href="#" class="coming-soon-link">Coming Soon</a>
+      </div>
+
+    </div>
+
+    <!-- Site Footer -->
+    <footer class="site-footer">
+      © 2025 Clairity &nbsp;·&nbsp; created by xZiyy
+    </footer>
+
+  </div>
+
+<script>
+  // Firebase Configuration
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+
+  function setStatValue(id, value) {
+    const el = document.getElementById(id);
+    el.textContent = value;
+    el.classList.remove('loading-val');
+    el.classList.add('count-animation');
+    setTimeout(() => el.classList.remove('count-animation'), 400);
+  }
+
+  function trackVisitor() {
+    const visitorId = localStorage.getItem('visitorId') || generateVisitorId();
+    localStorage.setItem('visitorId', visitorId);
+    database.ref('visitors/' + visitorId).set({
+      lastVisit: firebase.database.ServerValue.TIMESTAMP
+    });
+  }
+
+  function generateVisitorId() {
+    return 'v_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  }
+
+  database.ref('stats/totalRequests').on('value', (snapshot) => {
+    setStatValue('totalRequests', snapshot.val() || 0);
+  });
+
+  database.ref('visitors').on('value', (snapshot) => {
+    setStatValue('totalUsers', snapshot.numChildren());
+  });
+
+  function incrementRequests() {
+    database.ref('stats/totalRequests').transaction(v => (v || 0) + 1);
+  }
+
+  trackVisitor();
+
+  document.getElementById("generateForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const text = document.getElementById("textInput").value.trim();
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    const imageEl = document.getElementById("generatedImage");
+    const imageContainer = document.getElementById("imageContainer");
+    const downloadGuide = document.getElementById("downloadGuide");
+
+    if (!text) return;
+
+    loadingOverlay.classList.remove("hidden");
+    imageContainer.classList.remove("visible");
+    downloadGuide.classList.remove("visible");
+
+    const imageUrl = `https://clairity-api.vercel.app/api/brat?text=${encodeURIComponent(text)}`;
+
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error("Failed");
+
+      const blob = await response.blob();
+      const objectURL = URL.createObjectURL(blob);
+
+      imageEl.src = objectURL;
+      imageContainer.classList.add("visible");
+      downloadGuide.classList.add("visible");
+      incrementRequests();
+
+      imageEl.onclick = () => {
+        const a = document.createElement("a");
+        a.href = objectURL;
+        a.download = "brat_" + text.toLowerCase().replace(/\s+/g, '_') + ".png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      };
+    } catch (err) {
+      console.error(err);
+      alert("Error generating image. Please try again.");
+    } finally {
+      loadingOverlay.classList.add("hidden");
+    }
+  });
+</script>
+</body>
+</html>
