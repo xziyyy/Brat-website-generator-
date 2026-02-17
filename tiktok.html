@@ -3,76 +3,64 @@
 <head>
 <meta charset="UTF-8">
 <title>TikTok Downloader</title>
+
 <style>
-    body{
-        font-family: Arial, sans-serif;
-        background:#0f172a;
-        color:white;
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        min-height:100vh;
-    }
-    .box{
-        background:#020617;
-        padding:20px;
-        border-radius:12px;
-        width:100%;
-        max-width:420px;
-        box-shadow:0 0 20px rgba(0,0,0,0.5);
-    }
-    h2{
-        text-align:center;
-        margin-bottom:15px;
-    }
-    input{
-        width:100%;
-        padding:10px;
-        border-radius:8px;
-        border:none;
-        outline:none;
-        margin-bottom:10px;
-    }
-    button{
-        width:100%;
-        padding:10px;
-        border:none;
-        border-radius:8px;
-        background:#22c55e;
-        font-weight:bold;
-        cursor:pointer;
-    }
-    button:hover{
-        background:#16a34a;
-    }
-    .result{
-        margin-top:15px;
-        display:none;
-    }
-    .result img{
-        width:100%;
-        border-radius:10px;
-        margin-bottom:10px;
-    }
-    .link{
-        display:block;
-        text-decoration:none;
-        background:#2563eb;
-        padding:8px;
-        border-radius:6px;
-        text-align:center;
-        color:white;
-        margin-top:6px;
-        font-size:14px;
-    }
-    .link:hover{
-        background:#1d4ed8;
-    }
-    .loading{
-        text-align:center;
-        margin-top:10px;
-        display:none;
-    }
+body{
+    font-family: Arial, sans-serif;
+    background:#0f172a;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
+.box{
+    background:#020617;
+    padding:20px;
+    border-radius:12px;
+    width:100%;
+    max-width:420px;
+    box-shadow:0 0 20px rgba(0,0,0,0.5);
+}
+h2{text-align:center;margin-bottom:15px;}
+input{
+    width:100%;
+    padding:10px;
+    border-radius:8px;
+    border:none;
+    outline:none;
+    margin-bottom:10px;
+}
+button{
+    width:100%;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#22c55e;
+    font-weight:bold;
+    cursor:pointer;
+}
+button:hover{background:#16a34a;}
+.result{margin-top:15px;display:none;}
+.result img{
+    width:100%;
+    border-radius:10px;
+    margin-bottom:10px;
+}
+.link{
+    display:block;
+    text-decoration:none;
+    background:#2563eb;
+    padding:8px;
+    border-radius:6px;
+    text-align:center;
+    color:white;
+    margin-top:6px;
+    font-size:14px;
+    cursor:pointer;
+}
+.link:hover{background:#1d4ed8;}
+.loading{text-align:center;margin-top:10px;display:none;}
 </style>
 </head>
 
@@ -90,13 +78,15 @@
         <p id="title"></p>
         <p id="author"></p>
 
-        <a id="nowm" class="link" target="_blank">⬇ Video No Watermark</a>
-        <a id="wm" class="link" target="_blank">⬇ Video Watermark</a>
-        <a id="audio" class="link" target="_blank">⬇ Download Audio</a>
+        <div id="nowm" class="link">⬇ Video No Watermark</div>
+        <div id="wm" class="link">⬇ Video Watermark</div>
+        <div id="audio" class="link">⬇ Download Audio</div>
     </div>
 </div>
 
 <script>
+let cacheData = null;
+
 async function download(){
     const url = document.getElementById("tiktokUrl").value;
     if(!url){
@@ -122,14 +112,15 @@ async function download(){
         }
 
         const r = data.result;
+        cacheData = r;
 
         document.getElementById("thumb").src = r.thumbnail;
         document.getElementById("title").innerText = "📌 " + r.title;
         document.getElementById("author").innerText = "👤 " + r.author;
 
-        document.getElementById("nowm").href = r.nowm;
-        document.getElementById("wm").href = r.watermark;
-        document.getElementById("audio").href = r.audio;
+        document.getElementById("nowm").onclick = () => blobDownload(r.nowm, cleanName(r.title)+".mp4");
+        document.getElementById("wm").onclick   = () => blobDownload(r.watermark, cleanName(r.title)+"_wm.mp4");
+        document.getElementById("audio").onclick= () => blobDownload(r.audio, cleanName(r.title)+".mp3");
 
         loading.style.display = "none";
         resultBox.style.display = "block";
@@ -139,6 +130,32 @@ async function download(){
         alert("Error API / Koneksi!");
         loading.style.display = "none";
     }
+}
+
+/* REAL DOWNLOAD SYSTEM */
+async function blobDownload(url, filename){
+    try{
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        window.URL.revokeObjectURL(blobUrl);
+    }catch(e){
+        alert("Gagal download file!");
+        console.error(e);
+    }
+}
+
+/* Clean file name */
+function cleanName(text){
+    return text.replace(/[^\w\d]+/g,"_").substring(0,40);
 }
 </script>
 
