@@ -78,15 +78,13 @@ button:hover{background:#16a34a;}
         <p id="title"></p>
         <p id="author"></p>
 
-        <div id="nowm" class="link">⬇ Video No Watermark</div>
-        <div id="wm" class="link">⬇ Video Watermark</div>
-        <div id="audio" class="link">⬇ Download Audio</div>
+        <a id="nowm" class="link" target="_blank">⬇ Video No Watermark</a>
+        <a id="wm" class="link" target="_blank">⬇ Video Watermark</a>
+        <a id="audio" class="link" target="_blank">⬇ Download Audio</a>
     </div>
 </div>
 
 <script>
-let cacheData = null;
-
 async function download(){
     const url = document.getElementById("tiktokUrl").value;
     if(!url){
@@ -112,15 +110,15 @@ async function download(){
         }
 
         const r = data.result;
-        cacheData = r;
 
         document.getElementById("thumb").src = r.thumbnail;
         document.getElementById("title").innerText = "📌 " + r.title;
         document.getElementById("author").innerText = "👤 " + r.author;
 
-        document.getElementById("nowm").onclick = () => blobDownload(r.nowm, cleanName(r.title)+".mp4");
-        document.getElementById("wm").onclick   = () => blobDownload(r.watermark, cleanName(r.title)+"_wm.mp4");
-        document.getElementById("audio").onclick= () => blobDownload(r.audio, cleanName(r.title)+".mp3");
+        // Native browser download handler
+        document.getElementById("nowm").href = r.nowm;
+        document.getElementById("wm").href   = r.watermark;
+        document.getElementById("audio").href= r.audio;
 
         loading.style.display = "none";
         resultBox.style.display = "block";
@@ -130,32 +128,6 @@ async function download(){
         alert("Error API / Koneksi!");
         loading.style.display = "none";
     }
-}
-
-/* REAL DOWNLOAD SYSTEM */
-async function blobDownload(url, filename){
-    try{
-        const res = await fetch(url);
-        const blob = await res.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        window.URL.revokeObjectURL(blobUrl);
-    }catch(e){
-        alert("Gagal download file!");
-        console.error(e);
-    }
-}
-
-/* Clean file name */
-function cleanName(text){
-    return text.replace(/[^\w\d]+/g,"_").substring(0,40);
 }
 </script>
 
