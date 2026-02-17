@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>TikTok Downloader</title>
+<style>
+    body{
+        font-family: Arial, sans-serif;
+        background:#0f172a;
+        color:white;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        min-height:100vh;
+    }
+    .box{
+        background:#020617;
+        padding:20px;
+        border-radius:12px;
+        width:100%;
+        max-width:420px;
+        box-shadow:0 0 20px rgba(0,0,0,0.5);
+    }
+    h2{
+        text-align:center;
+        margin-bottom:15px;
+    }
+    input{
+        width:100%;
+        padding:10px;
+        border-radius:8px;
+        border:none;
+        outline:none;
+        margin-bottom:10px;
+    }
+    button{
+        width:100%;
+        padding:10px;
+        border:none;
+        border-radius:8px;
+        background:#22c55e;
+        font-weight:bold;
+        cursor:pointer;
+    }
+    button:hover{
+        background:#16a34a;
+    }
+    .result{
+        margin-top:15px;
+        display:none;
+    }
+    .result img{
+        width:100%;
+        border-radius:10px;
+        margin-bottom:10px;
+    }
+    .link{
+        display:block;
+        text-decoration:none;
+        background:#2563eb;
+        padding:8px;
+        border-radius:6px;
+        text-align:center;
+        color:white;
+        margin-top:6px;
+        font-size:14px;
+    }
+    .link:hover{
+        background:#1d4ed8;
+    }
+    .loading{
+        text-align:center;
+        margin-top:10px;
+        display:none;
+    }
+</style>
+</head>
+
+<body>
+<div class="box">
+    <h2>🎵 TikTok Downloader</h2>
+
+    <input type="text" id="tiktokUrl" placeholder="Paste link TikTok di sini...">
+    <button onclick="download()">Download</button>
+
+    <div class="loading" id="loading">⏳ Mengambil data...</div>
+
+    <div class="result" id="result">
+        <img id="thumb">
+        <p id="title"></p>
+        <p id="author"></p>
+
+        <a id="nowm" class="link" target="_blank">⬇ Video No Watermark</a>
+        <a id="wm" class="link" target="_blank">⬇ Video Watermark</a>
+        <a id="audio" class="link" target="_blank">⬇ Download Audio</a>
+    </div>
+</div>
+
+<script>
+async function download(){
+    const url = document.getElementById("tiktokUrl").value;
+    if(!url){
+        alert("Masukkan link TikTok!");
+        return;
+    }
+
+    const loading = document.getElementById("loading");
+    const resultBox = document.getElementById("result");
+
+    loading.style.display = "block";
+    resultBox.style.display = "none";
+
+    try{
+        const api = `https://clairity-api.vercel.app/api/tiktok?url=${encodeURIComponent(url)}`;
+        const res = await fetch(api);
+        const data = await res.json();
+
+        if(!data.status){
+            alert("Gagal mengambil data!");
+            loading.style.display = "none";
+            return;
+        }
+
+        const r = data.result;
+
+        document.getElementById("thumb").src = r.thumbnail;
+        document.getElementById("title").innerText = "📌 " + r.title;
+        document.getElementById("author").innerText = "👤 " + r.author;
+
+        document.getElementById("nowm").href = r.nowm;
+        document.getElementById("wm").href = r.watermark;
+        document.getElementById("audio").href = r.audio;
+
+        loading.style.display = "none";
+        resultBox.style.display = "block";
+
+    }catch(e){
+        console.error(e);
+        alert("Error API / Koneksi!");
+        loading.style.display = "none";
+    }
+}
+</script>
+
+</body>
+</html>
