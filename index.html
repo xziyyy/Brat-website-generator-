@@ -864,12 +864,13 @@ body::before{
    CONFIG — change API URLs here
 ────────────────────────────────────────── */
 const CFG = {
-  visitorAPI : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-visitor',
-  requestAPI : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-requests',
-  bratAPI    : (t) => `https://clairity-api.vercel.app/api/brat?text=${encodeURIComponent(t)}`,
-  tiktokAPI  : (u) => `https://clairity-api.vercel.app/api/tiktok?url=${encodeURIComponent(u)}`,
-  // Proxy — requires api/proxy.js deployed on your Vercel
-  proxyAPI   : (u, f) => `https://clairity-api.vercel.app/api/proxy?url=${encodeURIComponent(u)}&filename=${encodeURIComponent(f)}`,
+  visitorAPI   : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-visitor',
+  requestAPI   : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-requests',
+  bratAPI      : (t) => `https://clairity-api.vercel.app/api/brat?text=${encodeURIComponent(t)}`,
+  tiktokAPI    : (u) => `https://clairity-api.vercel.app/api/tiktok?url=${encodeURIComponent(u)}`,
+  // Proxy download — fetch ulang link fresh tiap kali download
+  tiktokVideo  : (u) => `https://clairity-api.vercel.app/api/proxy/tiktok-video?url=${encodeURIComponent(u)}`,
+  tiktokAudio  : (u) => `https://clairity-api.vercel.app/api/proxy/tiktok-audio?url=${encodeURIComponent(u)}`,
 };
 
 /* ──────────────────────────────────────────
@@ -1007,19 +1008,15 @@ document.getElementById('brat-form').addEventListener('submit', async (e) => {
    TIKTOK DOWNLOADER
 ────────────────────────────────────────── */
 
-// Store raw CDN URLs setelah fetch berhasil
-let ttVideoUrl = '';
-let ttAudioUrl = '';
+// Simpan TikTok URL asli — proxy fetch ulang CDN link setiap download
+// (CDN link lovetik expire cepat, jadi tidak bisa disimpan)
+let ttOriginalUrl = '';
 
-// Trigger download via proxy (bypass CORS)
-function triggerDownload(cdnUrl, filename) {
-  if (!cdnUrl) return;
-  // Bersihkan filename — hapus .html atau ekstensi nyasar
-  const cleanName = filename.replace(/\.html?$/i, '');
-  const proxyUrl  = CFG.proxyAPI(cdnUrl, cleanName);
-  const a = document.createElement('a');
-  a.href = proxyUrl;
-  a.download = cleanName;
+// Trigger download — arahkan ke proxy yang fetch CDN fresh
+function triggerDownload(proxyUrl, filename) {
+  const a         = document.createElement('a');
+  a.href          = proxyUrl;
+  a.download      = filename;
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
@@ -1027,11 +1024,13 @@ function triggerDownload(cdnUrl, filename) {
 }
 
 document.getElementById('tt-btn-video').addEventListener('click', () => {
-  triggerDownload(ttVideoUrl, 'tiktok_video.mp4');
+  if (!ttOriginalUrl) return;
+  triggerDownload(CFG.tiktokVideo(ttOriginalUrl), 'tiktok_video.mp4');
 });
 
 document.getElementById('tt-btn-audio').addEventListener('click', () => {
-  triggerDownload(ttAudioUrl, 'tiktok_audio.mp3');
+  if (!ttOriginalUrl) return;
+  triggerDownload(CFG.tiktokAudio(ttOriginalUrl), 'tiktok_audio.mp3');
 });
 
 document.getElementById('tiktok-form').addEventListener('submit', async (e) => {
@@ -1049,8 +1048,7 @@ document.getElementById('tiktok-form').addEventListener('submit', async (e) => {
   showLoad('Fetching');
   $result.classList.remove('show');
   $err.classList.remove('show');
-  ttVideoUrl = '';
-  ttAudioUrl = '';
+  ttOriginalUrl = '';
 
   try {
     const res  = await fetch(CFG.tiktokAPI(url));
@@ -1064,13 +1062,11 @@ document.getElementById('tiktok-form').addEventListener('submit', async (e) => {
     $author.textContent = r.author    || '';
     $title.textContent  = r.title     || '';
 
-    // Simpan URL CDN untuk dipakai saat tombol download diklik
-    ttVideoUrl = r.nowm  || '';
-    ttAudioUrl = r.audio || '';
+    // Simpan URL TikTok ASLI — bukan CDN link yang cepat expire
+    ttOriginalUrl = url;
 
-    // Tampilkan/sembunyikan tombol sesuai ketersediaan
-    document.getElementById('tt-btn-video').style.opacity = ttVideoUrl ? '1' : '0.3';
-    document.getElementById('tt-btn-audio').style.opacity = ttAudioUrl ? '1' : '0.3';
+    document.getElementById('tt-btn-video').style.opacity = '1';
+    document.getElementById('tt-btn-audio').style.opacity = '1';
 
     $result.classList.add('show');
     hitRequest();
