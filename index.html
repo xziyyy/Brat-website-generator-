@@ -868,6 +868,8 @@ const CFG = {
   requestAPI : 'https://countapi.mileshilliard.com/api/v1/hit/xziyy1153-requests',
   bratAPI    : (t) => `https://clairity-api.vercel.app/api/brat?text=${encodeURIComponent(t)}`,
   tiktokAPI  : (u) => `https://clairity-api.vercel.app/api/tiktok?url=${encodeURIComponent(u)}`,
+  // Proxy — requires api/proxy.js deployed on your Vercel
+  proxyAPI   : (u, f) => `https://clairity-api.vercel.app/api/proxy?url=${encodeURIComponent(u)}&filename=${encodeURIComponent(f)}`,
 };
 
 /* ──────────────────────────────────────────
@@ -1005,53 +1007,41 @@ document.getElementById('brat-form').addEventListener('submit', async (e) => {
    TIKTOK DOWNLOADER
 ────────────────────────────────────────── */
 
-// Store URLs for download after fetch
+// Store raw CDN URLs setelah fetch berhasil
 let ttVideoUrl = '';
 let ttAudioUrl = '';
 
-// Blob-fetch download: fetches file as blob then triggers save
-// Falls back to window.open if CORS blocks the fetch
-async function blobDownload(url, filename) {
-  try {
-    showLoad('Downloading');
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('fetch failed');
-    const blob = await res.blob();
-    const objUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
-  } catch {
-    // CORS fallback — open in new tab so browser handles download
-    window.open(url, '_blank');
-  } finally {
-    hideLoad();
-  }
+// Trigger download via proxy (bypass CORS)
+function triggerDownload(cdnUrl, filename) {
+  if (!cdnUrl) return;
+  // Route melalui proxy Vercel — server yg fetch CDN, bukan browser
+  const proxyUrl = CFG.proxyAPI(cdnUrl, filename);
+  const a = document.createElement('a');
+  a.href = proxyUrl;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
-document.getElementById('tt-btn-video').addEventListener('click', (e) => {
-  e.preventDefault();
-  if (ttVideoUrl) blobDownload(ttVideoUrl, 'tiktok_video.mp4');
+document.getElementById('tt-btn-video').addEventListener('click', () => {
+  triggerDownload(ttVideoUrl, 'tiktok_video.mp4');
 });
 
-document.getElementById('tt-btn-audio').addEventListener('click', (e) => {
-  e.preventDefault();
-  if (ttAudioUrl) blobDownload(ttAudioUrl, 'tiktok_audio.mp3');
+document.getElementById('tt-btn-audio').addEventListener('click', () => {
+  triggerDownload(ttAudioUrl, 'tiktok_audio.mp3');
 });
 
 document.getElementById('tiktok-form').addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const url      = document.getElementById('tiktok-input').value.trim();
-  const $result  = document.getElementById('tt-result');
-  const $err     = document.getElementById('tt-err');
-  const $thumb   = document.getElementById('tt-thumb-img');
-  const $author  = document.getElementById('tt-author');
-  const $title   = document.getElementById('tt-title');
+  const url     = document.getElementById('tiktok-input').value.trim();
+  const $result = document.getElementById('tt-result');
+  const $err    = document.getElementById('tt-err');
+  const $thumb  = document.getElementById('tt-thumb-img');
+  const $author = document.getElementById('tt-author');
+  const $title  = document.getElementById('tt-title');
 
   if (!url) return;
 
@@ -1073,17 +1063,15 @@ document.getElementById('tiktok-form').addEventListener('submit', async (e) => {
     $author.textContent = r.author    || '';
     $title.textContent  = r.title     || '';
 
-    // Store for download buttons
+    // Simpan URL CDN untuk dipakai saat tombol download diklik
     ttVideoUrl = r.nowm  || '';
     ttAudioUrl = r.audio || '';
 
-    // Show/hide buttons based on availability
-    document.getElementById('tt-btn-video').style.display = ttVideoUrl ? '' : 'none';
-    document.getElementById('tt-btn-audio').style.display = ttAudioUrl ? '' : 'none';
+    // Tampilkan/sembunyikan tombol sesuai ketersediaan
+    document.getElementById('tt-btn-video').style.opacity = ttVideoUrl ? '1' : '0.3';
+    document.getElementById('tt-btn-audio').style.opacity = ttAudioUrl ? '1' : '0.3';
 
     $result.classList.add('show');
-
-    // Increment global request count
     hitRequest();
 
   } catch {
